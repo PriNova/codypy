@@ -55,7 +55,12 @@ async def create_subprocess_connection(
         env=os.environ,
     )
 
-    if use_tcp == "true":
+    if use_tcp == "false":
+        print("Use stdio connection")
+        reader = process.stdout
+        writer = process.stdin
+
+    elif use_tcp == "true":
         print("Use TCP connection")
         while True:
             try:
@@ -64,11 +69,6 @@ async def create_subprocess_connection(
                 break
             except ConnectionRefusedError:
                 await asyncio.sleep(0.1)  # Retry after a short delay
-    elif use_tcp == "false":
-        print("Use stdio connection")
-        reader = process.stdout
-        writer = process.stdin
-
     return reader, writer, process
 
 async def initializing_message():
