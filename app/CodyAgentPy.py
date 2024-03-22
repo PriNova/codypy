@@ -17,15 +17,14 @@ SERVER_ADDRESS = (
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 WORKSPACE = os.getenv("WORKSPACE")
 
-USE_TCP = os.getenv("CODY_AGENT_DEBUG_REMOTE")
+USE_TCP = os.getenv("CODY_AGENT_DEBUG_REMOTE", "false").lower()
+os.environ["CODY_AGENT_DEBUG_REMOTE"] = USE_TCP
 
 BINARY_PATH = "bin/agent"
 message_id = 1
 
 async def connect_to_server():
     (reader, writer, process) = await create_subprocess_connection(BINARY_PATH, USE_TCP)
-
-    print(f"Connected to server: {SERVER_ADDRESS}")
 
     (method, params) = await initializing_message()
 
@@ -56,18 +55,19 @@ async def create_subprocess_connection(
         env=os.environ,
     )
 
-    if use_tcp == "True":
+    if use_tcp == "true":
         print("Use TCP connection")
         while True:
             try:
                 reader, writer = await asyncio.open_connection(*SERVER_ADDRESS)
+                print(f"Connected to server: {SERVER_ADDRESS}")
                 break
             except ConnectionRefusedError:
                 await asyncio.sleep(0.1)  # Retry after a short delay
-    elif use_tcp == "False":
+    elif use_tcp == "false":
         print("Use stdio connection")
-        reader = process.stdout#asyncio.StreamReader(process.stdout)
-        writer = process.stdin#asyncio.StreamWriter(process.stdin)
+        reader = process.stdout
+        writer = process.stdin
 
     return reader, writer, process
 
