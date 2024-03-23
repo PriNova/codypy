@@ -42,6 +42,22 @@ CodyAgentPy is a Python wrapper binding to Cody Agent through establishing a con
 
 4. The `asyncio` library is included in the Python standard library, so no additional installation is required.
 
+5. Create and activate a virtual environment:
+   ```
+   python -m venv venv
+   source venv/bin/activate
+   ```
+
+6. Install the dependencies from the `requirements.txt` file:
+   ```
+   pip install -r requirements.txt
+   ```
+7. Run the script using `python CodyAgentPy.py`.
+
+**Note**: Currently you need to set the path to the agent binary or the built script in the sourcegraph/cody/agent repository
+
+
+
 You are now ready to use CodyAgentPy!
 
 

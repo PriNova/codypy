@@ -4,24 +4,31 @@ import os
 import socket
 import sys
 from typing import Callable, Optional
+import yaml
 
 from dotenv import load_dotenv
 
 load_dotenv()
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+
+# Load the YAML file
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
 
 SERVER_ADDRESS = (
-    os.getenv("CODY_AGENT_SERVER_HOST", "localhost"),
-    int(os.getenv("CODY_AGENT_SERVER_PORT", 3113)),
+    config["CODY_AGENT_SERVER_HOST"],
+    int(config["CODY_AGENT_SERVER_PORT"]),
 )
 
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
-WORKSPACE = os.getenv("WORKSPACE")
+WORKSPACE = config["ROOT_WORKSPACE"]
 
-USE_TCP = os.getenv("CODY_AGENT_DEBUG_REMOTE", "false").lower()
+USE_BINARY = config['USE_BINARY']
+if USE_BINARY:
+    BINARY_PATH = config['BINARY_PATH']
+
+USE_TCP = str(config["USE_TCP"]).lower()
 os.environ["CODY_AGENT_DEBUG_REMOTE"] = USE_TCP
 
-USE_BINARY = False
-BINARY_PATH = "/home/prinova/CodeProjects/cody/agent/dist"# "bin/agent"
 message_id = 1
 
 async def connect_to_server():
@@ -49,10 +56,9 @@ async def create_subprocess_connection(
     binary_path: str,
     use_tcp: str,
 ) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
-    named_args = ["" if USE_BINARY else ""]
     process = await asyncio.create_subprocess_exec(
         "bin/agent" if USE_BINARY else "node",
-        "" if USE_BINARY else f"{binary_path}/index.js",
+        "jsonrpc" if USE_BINARY else f"{binary_path}/index.js",
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         env=os.environ,
