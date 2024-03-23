@@ -107,11 +107,10 @@ async def send_jsonrpc_message(writer, method, params):
     json_message = json.dumps(message)
     content_length = len(json_message)
     content_message = f"Content-Length: {content_length}\r\n\r\n{json_message}"
-    #print(content_message)
+
     # Send the JSON-RPC message to the server
     writer.write(content_message.encode('utf-8'))
     await writer.drain()
-    #sock.send(json_message)
     message_id += 1
 
 async def receive_jsonrpc_messages(reader):
@@ -124,7 +123,6 @@ async def receive_jsonrpc_messages(reader):
             json_data = await asyncio.wait_for(reader.readexactly(content_length), timeout=5.0)
             return json_data.decode('utf-8')
         
-        # stashed method here
         except asyncio.TimeoutError:
             print('Timeout occurred while reading from the server')
             break
