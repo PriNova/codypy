@@ -23,10 +23,7 @@ SERVER_ADDRESS = (
 WORKSPACE = config["ROOT_WORKSPACE"]
 
 USE_BINARY = config['USE_BINARY']
-BINARY_PATH = ''
-if not USE_BINARY:
-    BINARY_PATH = config['BINARY_PATH']
-
+BINARY_PATH = config['BINARY_PATH'] if not USE_BINARY else ''
 USE_TCP = str(config["USE_TCP"]).lower()
 os.environ["CODY_AGENT_DEBUG_REMOTE"] = USE_TCP
 
