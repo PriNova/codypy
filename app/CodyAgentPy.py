@@ -20,7 +20,8 @@ WORKSPACE = os.getenv("WORKSPACE")
 USE_TCP = os.getenv("CODY_AGENT_DEBUG_REMOTE", "false").lower()
 os.environ["CODY_AGENT_DEBUG_REMOTE"] = USE_TCP
 
-BINARY_PATH = "bin/agent"
+USE_BINARY = False
+BINARY_PATH = "/home/prinova/CodeProjects/cody/agent/dist"# "bin/agent"
 message_id = 1
 
 async def connect_to_server():
@@ -48,8 +49,10 @@ async def create_subprocess_connection(
     binary_path: str,
     use_tcp: str,
 ) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+    named_args = ["" if USE_BINARY else ""]
     process = await asyncio.create_subprocess_exec(
-        binary_path,
+        "bin/agent" if USE_BINARY else "node",
+        "" if USE_BINARY else f"{binary_path}/index.js",
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         env=os.environ,
@@ -69,7 +72,10 @@ async def create_subprocess_connection(
                 break
             except ConnectionRefusedError:
                 await asyncio.sleep(0.1)  # Retry after a short delay
+
     return reader, writer, process
+
+
 
 async def initializing_message():
     # Example JSON-RPC message
@@ -98,10 +104,12 @@ async def send_jsonrpc_message(writer, method, params):
     }
 
     # Convert the message to JSON string
-    json_message = json.dumps(message).encode('utf-8') + b'\n'
-
+    json_message = json.dumps(message)
+    content_length = len(json_message)
+    content_message = f"Content-Length: {content_length}\r\n\r\n{json_message}"
+    #print(content_message)
     # Send the JSON-RPC message to the server
-    writer.write(json_message)
+    writer.write(content_message.encode('utf-8'))
     await writer.drain()
     #sock.send(json_message)
     message_id += 1
