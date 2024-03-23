@@ -3,4 +3,4 @@ CODY_AGENT_SERVER_PORT: 3113
 ROOT_WORKSPACE: '/home/prinova/CodeProjects/cody'             # The absolute path to the root of the git repository workspace
 USE_BINARY: False                                             # Use the binary or node to execute the cody agent
 BINARY_PATH: "/home/prinova/CodeProjects/cody/agent/dist"     # When binary is used, the absolute path to the binary
-USE_TCP: True                                                 # Use TCP or STDIO to communicate with the cody agent
+USE_TCP: False                                                 # Use TCP or STDIO to communicate with the cody agent

@@ -29,26 +29,25 @@ os.environ["CODY_AGENT_DEBUG_REMOTE"] = USE_TCP
 
 message_id = 1
 
-async def connect_to_server():
+async def main():
     (reader, writer, process) = await create_subprocess_connection(BINARY_PATH, USE_TCP)
+    await send_initialization_message(writer)
+    await process_messages(reader, process)
 
+async def send_initialization_message(writer):
     (method, params) = await initializing_message()
-
-    # Send the JSON-RPC message to the server
     await send_jsonrpc_message(writer, method, params)
 
+async def process_messages(reader, process):
     try:
         while True:
             response = await receive_jsonrpc_messages(reader)
             if not response:
                 break
             
-            await process_json_data(response)
+            await handle_json_data(response)
     finally:
-        # Cleanup: terminate the process if it's still running
-        if process.returncode is None:
-            process.terminate()
-        await process.wait()
+        await cleanup_process(process)
 
 async def create_subprocess_connection(
     binary_path: str,
@@ -78,8 +77,6 @@ async def create_subprocess_connection(
                 await asyncio.sleep(0.1)  # Retry after a short delay
 
     return reader, writer, process
-
-
 
 async def initializing_message():
     # Example JSON-RPC message
@@ -131,38 +128,40 @@ async def receive_jsonrpc_messages(reader):
             print('Timeout occurred while reading from the server')
             break
 
-async def process_json_data(json_data):
+async def handle_json_data(json_data):
     try:
         json_response = json.loads(json_data)
-        if hasMethod(json_response):
+        if await hasMethod(json_response):
             print(f"Method: {json_response['method']}")
             if "params" in json_response:
                 print(f"Params: \n{json_response['params']}")
-        if hasResult(json_response):
-            print(f"Result: \n\n{extraxtResult(json_response)}")
+        if await hasResult(json_response):
+            print(f"Result: \n\n{await extraxtResult(json_response)}")
     except Exception:
         pass
 
-def hasMethod(json_response) -> bool:
+async def cleanup_process(process):
+    if process.returncode is None:
+        process.terminate()
+    await process.wait()
+
+async def hasMethod(json_response) -> bool:
     return "method" in json_response
 
-def hasResult(json_response)-> bool:
+async def hasResult(json_response)-> bool:
     return 'result' in json_response
 
-def extraxtResult(json_response) -> str:
+async def extraxtResult(json_response) -> str:
     try:
         return json_response["result"]
     except json.JSONDecodeError as e:
         None
 
-def extraxtMethod(json_response) -> str:
+async def extraxtMethod(json_response) -> str:
     try:
         return json_response["method"]
     except json.JSONDecodeError as e:
         return None
-
-async def main():
-    await connect_to_server()
 
 if __name__ == "__main__":
     asyncio.run( main())
