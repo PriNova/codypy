@@ -23,7 +23,8 @@ SERVER_ADDRESS = (
 WORKSPACE = config["ROOT_WORKSPACE"]
 
 USE_BINARY = config['USE_BINARY']
-if USE_BINARY:
+BINARY_PATH = ''
+if not USE_BINARY:
     BINARY_PATH = config['BINARY_PATH']
 
 USE_TCP = str(config["USE_TCP"]).lower()
