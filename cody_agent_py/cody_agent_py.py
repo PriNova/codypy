@@ -2,12 +2,12 @@ import asyncio
 import json
 import os
 
-from pydantic import create_model
 import pydantic_core as pd
 import yaml
-from dotenv import load_dotenv
-from server_info import ServerInfo
 from client_info import ClientInfo
+from dotenv import load_dotenv
+from pydantic import create_model
+from server_info import ServerInfo
 
 load_dotenv()
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
@@ -39,50 +39,39 @@ model_mapping = {
 
 
 async def main():
+    
     (reader, writer, process) = await create_server_connection(BINARY_PATH, USE_TCP)
 
     # Initialize the agent
     print ("--- Initialize Agent ---\n")
-    await send_initialization_message(writer)
-    server_info = None
-    async for response in handle_server_respones(reader, process):
-        if IS_DEBUGGING:
-            print(f"Response: \n\n{response}\n")
-        if response and await hasResult(response):
-            server_info: ServerInfo = ServerInfo.model_validate(response['result'])
-            if IS_DEBUGGING:
-                print(f"Server Info: {server_info}\n")
-
+    client_info = ClientInfo(
+        workspaceRootUri=WORKSPACE,
+        extensionConfiguration={
+            "accessToken": ACCESS_TOKEN,
+            "codebase": "github.com/sourcegraph/cody",
+        },
+    )
+    server_info = await send_initialization_message(reader, writer, process, client_info)
+    
     if server_info.authenticated:
         print("--- Server is authenticated ---")
+    else:
+        print("--- Server is not authenticated ---")
+        cleanup_server_connection(writer, process)
+        return
 
-    """# create a new chat
+    # create a new chat
     print ("--- Create new chat ---\n")
-    await send_jsonrpc_request(writer, 'chat/new', None)
-    result_id = ''
-    async for response in handle_server_respones(reader, process):
-        if response and await hasResult(response):
-            result_id = await extraxtResult(response)
-            print(f"Result: \n\n{response}\n")
+    result_id = await new_chat_session(reader, writer, process)
 
     # submit a chat message
     print("--- Send message (short) ---")
-    chat_message_request = {
-        "id": f'{result_id}',
-        "message": {
-            "command": "submit",
-            "text": "How can I use docker in WSL2? Explain very briefly.",
-            "submitType": "user",
-        }
-    }
-    await send_jsonrpc_request(writer, 'chat/submitMessage', chat_message_request)
-    async for response in handle_server_respones(reader, process):
-        if response and await hasResult(response):
-            print(f"Result: \n\n{response}\n")"""
+    text = "Pros and Cons of using types in Python?"
+    await submit_chat_message(reader, writer, process, text, result_id)
 
     # clean up server connection
-    await cleanup_server_connection(process)
-
+    print("--- Cleanup server connection ---")
+    await cleanup_server_connection(writer, process)
 
 async def create_server_connection(
     binary_path: str,
@@ -113,15 +102,47 @@ async def create_server_connection(
 
     return reader, writer, process
 
-async def send_initialization_message(writer):
-    client_info = ClientInfo(
-        workspaceRootUri=WORKSPACE,
-        extensionConfiguration={
-            "accessToken": ACCESS_TOKEN,
-            "codebase": "github.com/sourcegraph/cody",
-        },
-    )
+async def send_initialization_message(reader, writer, process, client_info) -> ServerInfo:
+    
     await send_jsonrpc_request(writer, 'initialize', client_info.model_dump(warnings=True))
+    async for response in handle_server_respones(reader, process):
+            if IS_DEBUGGING:
+                print(f"Response: \n\n{response}\n")
+            if response and await hasResult(response):
+                server_info: ServerInfo = ServerInfo.model_validate(response['result'])
+                if IS_DEBUGGING:
+                    print(f"Server Info: {server_info}\n")
+                return server_info
+
+async def new_chat_session(reader, writer, process) -> str:
+    await send_jsonrpc_request(writer, 'chat/new', None)
+    async for response in handle_server_respones(reader, process):
+        if response and await hasResult(response):
+            result_id = response["result"]
+            if IS_DEBUGGING:
+                print(f"Result: \n\n{result_id}\n")
+            return result_id
+
+async def submit_chat_message(reader, writer, process, text, result_id: str) -> str:
+    chat_message_request = {
+        "id": f'{result_id}',
+        "message": {
+            "command": "submit",
+            "text": text,
+            "submitType": "user",
+        }
+    }
+    await send_jsonrpc_request(writer, 'chat/submitMessage', chat_message_request)
+    async for response in handle_server_respones(reader, process):
+        if response and await hasResult(response):
+            if IS_DEBUGGING:
+                print(f"Result: \n\n{response}\n")
+            await showMessage( response['result'])
+
+async def showMessage(message):
+    if message["type"] == "transcript":
+        for message in message["messages"]:
+            print(f"{message['speaker']}: {message['text']}\n")
 
 async def send_jsonrpc_request(writer, method, params):
     global message_id
@@ -134,8 +155,8 @@ async def send_jsonrpc_request(writer, method, params):
     }
 
     # Convert the message to JSON string
-    json_message = json.dumps(message)
-    content_length = len(json_message)
+    json_message: bytes = pd.to_json(message).decode()
+    content_length: int = len(json_message)
     content_message = f"Content-Length: {content_length}\r\n\r\n{json_message}"
 
     # Send the JSON-RPC message to the server
@@ -147,9 +168,6 @@ async def handle_server_respones(reader, process):
     try:
         while True:
             response = await receive_jsonrpc_messages(reader)
-            """if not response:
-                pass"""
-
             yield pd.from_json(response)
     except asyncio.TimeoutError:
         pass
@@ -178,7 +196,8 @@ async def _handle_json_data(json_data):
             
     return json_response
 
-async def cleanup_server_connection(process):
+async def cleanup_server_connection(writer, process):
+    await send_jsonrpc_request(writer, 'exit', None)
     if process.returncode is None:
         process.terminate()
     await process.wait()
