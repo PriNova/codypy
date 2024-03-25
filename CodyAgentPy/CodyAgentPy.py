@@ -1,12 +1,11 @@
 import asyncio
 import json
 import os
-import socket
-import sys
-from typing import Callable, Optional
-import yaml
 
+import pydantic_core as pd
+import yaml
 from dotenv import load_dotenv
+from ServerInfo import ServerInfo
 
 load_dotenv()
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
@@ -37,11 +36,15 @@ async def main():
     # Initialize the agent
     print ("--- Initialize Agent ---\n")
     await send_initialization_message(writer)
+    server_info = None
     async for response in handle_server_respones(reader, process):
         if response and await hasResult(response):
-            print(f"Result: \n\n{response}\n")
+            server_info: ServerInfo = ServerInfo.model_validate(response['result'])
 
-    # create a new chat
+    if server_info.authenticated:
+        pass
+
+    """# create a new chat
     print ("--- Create new chat ---\n")
     await send_jsonrpc_request(writer, 'chat/new', None)
     result_id = ''
@@ -63,7 +66,7 @@ async def main():
     await send_jsonrpc_request(writer, 'chat/submitMessage', chat_message_request)
     async for response in handle_server_respones(reader, process):
         if response and await hasResult(response):
-            print(f"Result: \n\n{response}\n")
+            print(f"Result: \n\n{response}\n")"""
 
     # clean up server connection
     await cleanup_server_connection(process)
@@ -145,7 +148,7 @@ async def handle_server_respones(reader, process):
             """if not response:
                 pass"""
 
-            yield json.loads(response)
+            yield pd.from_json(response)
     except asyncio.TimeoutError:
         pass
 
@@ -158,7 +161,7 @@ async def receive_jsonrpc_messages(reader):
     return json_data.decode('utf-8')
 
 async def _handle_json_data(json_data):
-    json_response = json.loads(json_data)
+    json_response = pd.from_json(json_data)
     if await hasMethod(json_response):
         if IS_DEBUG: 
             print(f"Method: {json_response['method']}\n")

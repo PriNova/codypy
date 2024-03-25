@@ -2,3 +2,4 @@ venv
 bin
 .env
 .cody
+__pycache__
