@@ -2,10 +2,12 @@ import asyncio
 import json
 import os
 
+from pydantic import create_model
 import pydantic_core as pd
 import yaml
 from dotenv import load_dotenv
-from ServerInfo import ServerInfo
+from server_info import ServerInfo
+from client_info import ClientInfo
 
 load_dotenv()
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
@@ -26,9 +28,15 @@ BINARY_PATH = '' if USE_BINARY else config['BINARY_PATH']
 USE_TCP = str(config["USE_TCP"]).lower()
 os.environ["CODY_AGENT_DEBUG_REMOTE"] = USE_TCP
 
-IS_DEBUG = False
+IS_DEBUGGING = config['DEBUGGING']
 
 message_id = 1
+
+model_mapping = {
+    "ServerInfo": ServerInfo,
+    "ClientInfo": ClientInfo,
+}
+
 
 async def main():
     (reader, writer, process) = await create_server_connection(BINARY_PATH, USE_TCP)
@@ -38,11 +46,15 @@ async def main():
     await send_initialization_message(writer)
     server_info = None
     async for response in handle_server_respones(reader, process):
+        if IS_DEBUGGING:
+            print(f"Response: \n\n{response}\n")
         if response and await hasResult(response):
             server_info: ServerInfo = ServerInfo.model_validate(response['result'])
+            if IS_DEBUGGING:
+                print(f"Server Info: {server_info}\n")
 
     if server_info.authenticated:
-        pass
+        print("--- Server is authenticated ---")
 
     """# create a new chat
     print ("--- Create new chat ---\n")
@@ -102,24 +114,14 @@ async def create_server_connection(
     return reader, writer, process
 
 async def send_initialization_message(writer):
-    (method, params) = await _initializing_message()
-    await send_jsonrpc_request(writer, method, params)
-
-async def _initializing_message():
-    # Example JSON-RPC message
-    method = "initialize"
-    params = {
-        "name": "defaultClient",
-        "version": "v1",
-        "workspaceRootUri": WORKSPACE,
-        "workspaceRootPath": WORKSPACE,
-        "extensionConfiguration": {
+    client_info = ClientInfo(
+        workspaceRootUri=WORKSPACE,
+        extensionConfiguration={
             "accessToken": ACCESS_TOKEN,
-            "serverEndpoint": "https://sourcegraph.com",
             "codebase": "github.com/sourcegraph/cody",
         },
-    }
-    return method, params
+    )
+    await send_jsonrpc_request(writer, 'initialize', client_info.model_dump(warnings=True))
 
 async def send_jsonrpc_request(writer, method, params):
     global message_id
@@ -163,14 +165,14 @@ async def receive_jsonrpc_messages(reader):
 async def _handle_json_data(json_data):
     json_response = pd.from_json(json_data)
     if await hasMethod(json_response):
-        if IS_DEBUG: 
+        if IS_DEBUGGING: 
             print(f"Method: {json_response['method']}\n")
-        if "params" in json_response and IS_DEBUG:
+        if "params" in json_response and IS_DEBUGGING:
             print(f"Params: \n{json_response['params']}\n")
         return await extraxtMethod(json_response)
 
     if await hasResult(json_response):
-        if  IS_DEBUG:
+        if  IS_DEBUGGING:
             print(f"Result: \n\n{await extraxtResult(json_response)}\n")
         return await extraxtResult(json_response)
             
