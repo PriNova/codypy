@@ -75,13 +75,44 @@ You are now ready to use CodyAgentPy!
 
 ```python
 async def main():
-    await connect_to_server()
+   (reader, writer, process) = await create_server_connection(BINARY_PATH, USE_TCP)
+   
+   # Initialize the agent
+   print ("--- Initialize Agent ---\n")
+   client_info = ClientInfo(
+      workspaceRootUri=WORKSPACE,
+      extensionConfiguration={
+            "accessToken": ACCESS_TOKEN,
+            "codebase": "github.com/sourcegraph/cody",
+      },
+   )
+   server_info = await send_initialization_message(reader, writer, process, client_info)
+   
+   if server_info.authenticated:
+      print("--- Server is authenticated ---")
+   else:
+      print("--- Server is not authenticated ---")
+      cleanup_server_connection(writer, process)
+      return
+
+   # create a new chat
+   print ("--- Create new chat ---\n")
+   result_id = await new_chat_session(reader, writer, process)
+
+   # submit a chat message
+   print("--- Send message (short) ---")
+   text = "Pros and Cons of using types in Python?"
+   await submit_chat_message(reader, writer, process, text, result_id)
+
+   # clean up server connection
+   print("--- Cleanup server connection ---")
+   await cleanup_server_connection(writer, process)
 
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-This example demonstrates how to use the `connect_to_server()` function to establish a connection to the server and process JSON-RPC messages.
+This example demonstrates how to use a complete cycle to establish a connection to the server and process JSON-RPC messages.
 
 ## Roadmap
 
