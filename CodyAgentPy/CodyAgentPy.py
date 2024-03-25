@@ -36,17 +36,34 @@ async def main():
     print ("--- Initialize Agent ---\n")
     await send_initialization_message(writer)
     async for response in process_messages(reader, process):
-        print(f"Response: {response}\n")
+        if response and await hasResult(response):
+            print(f"Result: \n\n{response}\n")
 
     print ("--- Execute new chat ---\n")
-    await send_jsonrpc_message(writer, 'chat/new', '{}')
+    await send_jsonrpc_message(writer, 'chat/new', None)
+    result_id = ''
     async for response in process_messages(reader, process):
-        if response:
-            print(f"Response: {response}\n")
-        else:
-            await cleanup_process(process)
-    #print("Send message (short)")
-    #await send_jsonrpc_message(writer, 'chat/submitMessage', '')
+        if response and await hasResult(response):
+            result_id = await extraxtResult(response)
+            print(f"Result: \n\n{response}\n")
+
+    print("--- Send message (short) ---")
+    
+    request = {
+        "id": f'{result_id}',
+        "message": {
+            "command": "submit",
+            "text": "How can I use docker in WSL2? Explain very briefly.",
+            "submitType": "user",
+        }
+    }
+
+    await send_jsonrpc_message(writer, 'chat/submitMessage', request)
+    async for response in process_messages(reader, process):
+        if response and await hasResult(response):
+            print(f"Result: \n\n{response}\n")
+
+    await cleanup_process(process)
 
 
 async def create_subprocess_connection(
@@ -71,7 +88,7 @@ async def create_subprocess_connection(
         while True:
             try:
                 reader, writer = await asyncio.open_connection(*SERVER_ADDRESS)
-                print(f"Connected to server: {SERVER_ADDRESS}")
+                print(f"Connected to server: {SERVER_ADDRESS}\n")
                 break
             except ConnectionRefusedError:
                 await asyncio.sleep(0.1)  # Retry after a short delay
@@ -122,12 +139,12 @@ async def process_messages(reader, process):
     try:
         while True:
             response = await receive_jsonrpc_messages(reader)
-            if not response:
-                yield None
+            """if not response:
+                pass"""
 
-            yield await handle_json_data(response)
+            yield json.loads(response)
     except asyncio.TimeoutError:
-        yield None
+        pass
 
 async def receive_jsonrpc_messages(reader):
     headers = await asyncio.wait_for(reader.readuntil(b'\r\n\r\n'), timeout=5.0)
@@ -144,11 +161,14 @@ async def handle_json_data(json_data):
             print(f"Method: {json_response['method']}\n")
         if "params" in json_response and IS_DEBUG:
             print(f"Params: \n{json_response['params']}\n")
+        return await extraxtMethod(json_response)
 
-    if await hasResult(json_response) and IS_DEBUG:
-        print(f"Result: \n\n{await extraxtResult(json_response)}\n")
+    if await hasResult(json_response):
+        if  IS_DEBUG:
+            print(f"Result: \n\n{await extraxtResult(json_response)}\n")
+        return await extraxtResult(json_response)
             
-    return json_data
+    return json_response
 
 async def cleanup_process(process):
     if process.returncode is None:
