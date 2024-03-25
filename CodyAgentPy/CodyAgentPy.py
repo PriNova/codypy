@@ -32,24 +32,27 @@ IS_DEBUG = False
 message_id = 1
 
 async def main():
-    (reader, writer, process) = await create_subprocess_connection(BINARY_PATH, USE_TCP)
+    (reader, writer, process) = await create_server_connection(BINARY_PATH, USE_TCP)
+
+    # Initialize the agent
     print ("--- Initialize Agent ---\n")
     await send_initialization_message(writer)
-    async for response in process_messages(reader, process):
+    async for response in handle_server_respones(reader, process):
         if response and await hasResult(response):
             print(f"Result: \n\n{response}\n")
 
-    print ("--- Execute new chat ---\n")
-    await send_jsonrpc_message(writer, 'chat/new', None)
+    # create a new chat
+    print ("--- Create new chat ---\n")
+    await send_jsonrpc_request(writer, 'chat/new', None)
     result_id = ''
-    async for response in process_messages(reader, process):
+    async for response in handle_server_respones(reader, process):
         if response and await hasResult(response):
             result_id = await extraxtResult(response)
             print(f"Result: \n\n{response}\n")
 
+    # submit a chat message
     print("--- Send message (short) ---")
-    
-    request = {
+    chat_message_request = {
         "id": f'{result_id}',
         "message": {
             "command": "submit",
@@ -57,16 +60,16 @@ async def main():
             "submitType": "user",
         }
     }
-
-    await send_jsonrpc_message(writer, 'chat/submitMessage', request)
-    async for response in process_messages(reader, process):
+    await send_jsonrpc_request(writer, 'chat/submitMessage', chat_message_request)
+    async for response in handle_server_respones(reader, process):
         if response and await hasResult(response):
             print(f"Result: \n\n{response}\n")
 
-    await cleanup_process(process)
+    # clean up server connection
+    await cleanup_server_connection(process)
 
 
-async def create_subprocess_connection(
+async def create_server_connection(
     binary_path: str,
     use_tcp: str,
 ) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
@@ -96,10 +99,10 @@ async def create_subprocess_connection(
     return reader, writer, process
 
 async def send_initialization_message(writer):
-    (method, params) = await initializing_message()
-    await send_jsonrpc_message(writer, method, params)
+    (method, params) = await _initializing_message()
+    await send_jsonrpc_request(writer, method, params)
 
-async def initializing_message():
+async def _initializing_message():
     # Example JSON-RPC message
     method = "initialize"
     params = {
@@ -115,7 +118,7 @@ async def initializing_message():
     }
     return method, params
 
-async def send_jsonrpc_message(writer, method, params):
+async def send_jsonrpc_request(writer, method, params):
     global message_id
     # Create a JSON-RPC message
     message = {
@@ -135,7 +138,7 @@ async def send_jsonrpc_message(writer, method, params):
     await writer.drain()
     message_id += 1
 
-async def process_messages(reader, process):
+async def handle_server_respones(reader, process):
     try:
         while True:
             response = await receive_jsonrpc_messages(reader)
@@ -154,7 +157,7 @@ async def receive_jsonrpc_messages(reader):
     json_data = await asyncio.wait_for(reader.readexactly(content_length), timeout=5.0)
     return json_data.decode('utf-8')
 
-async def handle_json_data(json_data):
+async def _handle_json_data(json_data):
     json_response = json.loads(json_data)
     if await hasMethod(json_response):
         if IS_DEBUG: 
@@ -170,7 +173,7 @@ async def handle_json_data(json_data):
             
     return json_response
 
-async def cleanup_process(process):
+async def cleanup_server_connection(process):
     if process.returncode is None:
         process.terminate()
     await process.wait()
