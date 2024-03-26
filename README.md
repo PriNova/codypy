@@ -63,63 +63,27 @@ You are now ready to use CodyAgentPy!
 
 ## Usage
 
-1. Set the `SERVER_ADDRESS` variable to the desired server address and port.
-2. Run the script using `python CodyAgentPy.py`.
-3. The script will attempt to connect to the specified server.
-4. If the connection is successful, it will send an initialization message to the server.
-5. The script will then receive and process JSON-RPC messages from the server.
-6. It will extract and display the method and result from the received messages.
-7. The script will continue to receive messages until the server closes the connection or a timeout occurs.
+1. You need to retreivve the 'Config' class with 'get_configs()'.
+1. Set at least the 'BINARY_PATH' property to the agent binary or the build 'index.js' file.
+1. Run the example script using `python main.py`.
+1. The script will attempt to connect to the Cody Agent.
+1. If the connection is successful, it will send an initialization message to the server.
+1. The script will then receive and process JSON-RPC messages from the server.
+1. It will extract and display the method and result from the received messages.
+1. The script will continue to receive messages until the server closes the connection or a timeout occurs.
 
 ## Example
 
-```python
-async def main():
-   (reader, writer, process) = await create_server_connection(BINARY_PATH, USE_TCP)
-   
-   # Initialize the agent
-   print ("--- Initialize Agent ---\n")
-   client_info = ClientInfo(
-      workspaceRootUri=WORKSPACE,
-      extensionConfiguration={
-            "accessToken": ACCESS_TOKEN,
-            "codebase": "github.com/sourcegraph/cody",
-      },
-   )
-   server_info = await send_initialization_message(reader, writer, process, client_info)
-   
-   if server_info.authenticated:
-      print("--- Server is authenticated ---")
-   else:
-      print("--- Server is not authenticated ---")
-      cleanup_server_connection(writer, process)
-      return
-
-   # create a new chat
-   print ("--- Create new chat ---\n")
-   result_id = await new_chat_session(reader, writer, process)
-
-   # submit a chat message
-   print("--- Send message (short) ---")
-   text = "Pros and Cons of using types in Python?"
-   await submit_chat_message(reader, writer, process, text, result_id)
-
-   # clean up server connection
-   print("--- Cleanup server connection ---")
-   await cleanup_server_connection(writer, process)
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
+For an example of initializing and send two chat messages, look at [main.py](/home/prinova/CodeProjects/CodyAgentPy/main.py) file
 
 This example demonstrates how to use a complete cycle to establish a connection to the server and process JSON-RPC messages.
 
 ## Roadmap
 
-- [ ] Improve the parsing and handling of JSON-RPC responses in `receive_jsonrpc_messages()` function.
-- [ ] Enhance the initialization message in `initializing_message()` function to include additional client information.
+- [ x ] Improve the parsing and handling of JSON-RPC responses in `receive_jsonrpc_messages()` function.
+- [ x ] Enhance the initialization message in `initializing_message()` function to include additional client information.
 - [ ] Implement logging functionality to track client-server communication.
-- [ ] Add configuration options for server address, port, and other settings.
+- [ x ] Add configuration options for server address, port, and other settings.
 - [ ] Develop unit tests for key functions in `CodyAgentPy.py`.
 - [ ] Create documentation and examples for using the `CodyAgentPy` client library.
 
