@@ -4,7 +4,9 @@
 
 CodyAgentPy is a Python wrapper binding to Cody Agent through establishing a connection to the Cody-Agent server from [Sourcegraph Cody](https://github.com/sourcegraph/cody) using JSON-RPC (Remote Procedure Call) protocol over a TCP/stdio connection. It allows sending and receiving JSON-RPC messages asynchronously. 📨📥
 
-**Note: This project is currently in an experimental alpha stage. The API and functionality may change and break in future versions.** ⚠️🔧
+**Note 1: You need to register an account at [Sourcegraph](https://sourcegraph.com/) and create an API key.**
+
+**Note 2: This project is currently in an experimental alpha stage. The API and functionality may change and break in future versions.** ⚠️🔧
 
 
 
