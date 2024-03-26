@@ -12,9 +12,22 @@ from server_info import ServerInfo
 load_dotenv()
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
+def load_config(config_file: str='config.yaml')-> str:
+    """
+    Load the configuration from the 'config.yaml' file located in the current working directory.
+    If the file is not found, raise a FileNotFoundError.
+    """
+    cwd = os.getcwd()  # Get the current working directory
+    config_path = os.path.join(cwd, config_file)
+
+    if not os.path.isfile(config_path):
+        raise FileNotFoundError(f"Configuration file '{config_file}' not found in the current directory.")
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    return config
+
 # Load the YAML file
-with open('config.yaml', 'r') as file:
-    config = yaml.safe_load(file)
+config = load_config("config.yaml")
 
 SERVER_ADDRESS = (
     config["CODY_AGENT_SERVER_HOST"],
@@ -31,12 +44,6 @@ os.environ["CODY_AGENT_DEBUG_REMOTE"] = USE_TCP
 IS_DEBUGGING = config['DEBUGGING']
 
 message_id = 1
-
-model_mapping = {
-    "ServerInfo": ServerInfo,
-    "ClientInfo": ClientInfo,
-}
-
 
 async def main():
     
@@ -66,7 +73,13 @@ async def main():
 
     # submit a chat message
     print("--- Send message (short) ---")
-    text = "Pros and Cons of using types in Python?"
+    
+    # Wait for input from user in the CLI terminal
+    text: str = input("Enter message: ")
+    await submit_chat_message(reader, writer, process, text, result_id)
+
+    # second input to show if conversation works
+    text: str = input("Enter message: ")
     await submit_chat_message(reader, writer, process, text, result_id)
 
     # clean up server connection
@@ -123,7 +136,7 @@ async def new_chat_session(reader, writer, process) -> str:
                 print(f"Result: \n\n{result_id}\n")
             return result_id
 
-async def submit_chat_message(reader, writer, process, text, result_id: str) -> str:
+async def submit_chat_message(reader, writer, process, text, result_id):
     chat_message_request = {
         "id": f'{result_id}',
         "message": {
@@ -137,16 +150,27 @@ async def submit_chat_message(reader, writer, process, text, result_id: str) -> 
         if response and await hasResult(response):
             if IS_DEBUGGING:
                 print(f"Result: \n\n{response}\n")
-            await showMessage( response['result'])
+            await show_last_message( response['result'])
 
-async def showMessage(message):
+async def show_last_message(messages):
+    if messages["type"] == "transcript":
+        last_message= messages["messages"][-1:]
+        if IS_DEBUGGING:
+            print(f"Last message: {last_message}")
+        speaker = last_message[0]['speaker']
+        text = last_message[0]['text']
+        output = f"{speaker}: {text}\n"
+        print(output)
+            
+async def show_messages(message):
     if message["type"] == "transcript":
         for message in message["messages"]:
-            print(f"{message['speaker']}: {message['text']}\n")
+            if IS_DEBUGGING:
+                output = f"{message['speaker']}: {message['text']}\n"
+                print(output)
 
 async def send_jsonrpc_request(writer, method, params):
     global message_id
-    # Create a JSON-RPC message
     message = {
         "jsonrpc": "2.0",
         "id": message_id,
