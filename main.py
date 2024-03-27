@@ -7,33 +7,33 @@ from cody_agent_py.client_info import ClientInfo
 from cody_agent_py.cody_agent_py import (
     cleanup_server_connection,
     create_server_connection,
-    get_configs,
     new_chat_session,
     send_initialization_message,
     submit_chat_message,
 )
+from cody_agent_py.config import get_configs
 
 load_dotenv()
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
 
 async def main():
-    config = await get_configs()
-    config.BINARY_PATH = "/home/prinova/CodeProjects/cody/agent/dist"
-    config.IS_DEBUGGING = False
-    (reader, writer, process) = await create_server_connection(config)
+    configs = await get_configs()
+    configs.BINARY_PATH = "/home/prinova/CodeProjects/cody/agent/dist"
+    configs.IS_DEBUGGING = False
+    (reader, writer, process) = await create_server_connection(configs)
 
     # Initialize the agent
     print("--- Initialize Agent ---")
     client_info = ClientInfo(
-        workspaceRootUri=config.WORKSPACE,
+        workspaceRootUri=configs.WORKSPACE,
         extensionConfiguration={
             "accessToken": ACCESS_TOKEN,
             "codebase": "github.com/sourcegraph/cody",
         },
     )
     server_info = await send_initialization_message(
-        reader, writer, process, client_info
+        reader, writer, process, client_info, configs
     )
 
     if server_info.authenticated:
@@ -45,18 +45,18 @@ async def main():
 
     # create a new chat
     print("--- Create new chat ---")
-    result_id = await new_chat_session(reader, writer, process)
+    result_id = await new_chat_session(reader, writer, process, configs)
 
     # submit a chat message
     print("--- Send message (short) ---")
 
     # Wait for input from user in the CLI terminal
     text: str = input("Enter message: ")
-    await submit_chat_message(reader, writer, process, text, result_id)
+    await submit_chat_message(reader, writer, process, text, result_id, configs)
 
     # second input to show if conversation works
     text: str = input("Enter message: ")
-    await submit_chat_message(reader, writer, process, text, result_id)
+    await submit_chat_message(reader, writer, process, text, result_id, configs)
 
     # clean up server connection
     print("--- Cleanup server connection ---")

@@ -65,7 +65,7 @@ async def _extraxtMethod(json_response) -> str:
         return None
 
 
-async def _handle_json_data(json_data):
+async def _handle_json_data(json_data, configs):
     json_response = pd.from_json(json_data)
     if await _hasMethod(json_response):
         if configs.IS_DEBUGGING:
@@ -82,7 +82,7 @@ async def _handle_json_data(json_data):
     return json_response
 
 
-async def _show_last_message(messages):
+async def _show_last_message(messages, configs):
     if messages["type"] == "transcript":
         last_message = messages["messages"][-1:]
         if configs.IS_DEBUGGING:
@@ -93,7 +93,7 @@ async def _show_last_message(messages):
         print(output)
 
 
-async def _show_messages(message):
+async def _show_messages(message, configs):
     if message["type"] == "transcript":
         for message in message["messages"]:
             if configs.IS_DEBUGGING:
