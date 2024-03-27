@@ -3,8 +3,7 @@ from json import JSONDecodeError
 
 import pydantic_core as pd
 
-from cody_agent_py.cody_agent_py import config, message_id
-
+message_id = 1
 
 async def _send_jsonrpc_request(writer, method, params):
     global message_id
@@ -69,14 +68,14 @@ async def _extraxtMethod(json_response) -> str:
 async def _handle_json_data(json_data):
     json_response = pd.from_json(json_data)
     if await _hasMethod(json_response):
-        if config.IS_DEBUGGING:
+        if configs.IS_DEBUGGING:
             print(f"Method: {json_response['method']}\n")
-        if "params" in json_response and config.IS_DEBUGGING:
+        if "params" in json_response and configs.IS_DEBUGGING:
             print(f"Params: \n{json_response['params']}\n")
         return await _extraxtMethod(json_response)
 
     if await _hasResult(json_response):
-        if config.IS_DEBUGGING:
+        if configs.IS_DEBUGGING:
             print(f"Result: \n\n{await _extraxtResult(json_response)}\n")
         return await _extraxtResult(json_response)
 
@@ -86,7 +85,7 @@ async def _handle_json_data(json_data):
 async def _show_last_message(messages):
     if messages["type"] == "transcript":
         last_message = messages["messages"][-1:]
-        if config.IS_DEBUGGING:
+        if configs.IS_DEBUGGING:
             print(f"Last message: {last_message}")
         speaker = last_message[0]["speaker"]
         text = last_message[0]["text"]
@@ -97,6 +96,6 @@ async def _show_last_message(messages):
 async def _show_messages(message):
     if message["type"] == "transcript":
         for message in message["messages"]:
-            if config.IS_DEBUGGING:
+            if configs.IS_DEBUGGING:
                 output = f"{message['speaker']}: {message['text']}\n"
                 print(output)

@@ -2,7 +2,7 @@ import asyncio
 import os
 import sys
 
-from cody_agent_py.messaging import (
+from .messaging import (
     _handle_server_respones,
     _hasResult,
     _send_jsonrpc_request,
@@ -12,13 +12,11 @@ from cody_agent_py.messaging import (
 from .config import Config
 from .server_info import ServerInfo
 
-config = Config("")
-
-message_id = 1
+configs = Config("")
 
 
 async def get_configs():
-    return config
+    return configs
 
 
 async def create_server_connection(
@@ -68,11 +66,11 @@ async def send_initialization_message(
         writer, "initialize", client_info.model_dump(warnings=True)
     )
     async for response in _handle_server_respones(reader, process):
-        if config.IS_DEBUGGING:
+        if configs.IS_DEBUGGING:
             print(f"Response: \n\n{response}\n")
         if response and await _hasResult(response):
             server_info: ServerInfo = ServerInfo.model_validate(response["result"])
-            if config.IS_DEBUGGING:
+            if configs.IS_DEBUGGING:
                 print(f"Server Info: {server_info}\n")
             return server_info
 
@@ -82,7 +80,7 @@ async def new_chat_session(reader, writer, process) -> str:
     async for response in _handle_server_respones(reader, process):
         if response and await _hasResult(response):
             result_id = response["result"]
-            if config.IS_DEBUGGING:
+            if configs.IS_DEBUGGING:
                 print(f"Result: \n\n{result_id}\n")
             return result_id
 
@@ -99,7 +97,7 @@ async def submit_chat_message(reader, writer, process, text, result_id):
     await _send_jsonrpc_request(writer, "chat/submitMessage", chat_message_request)
     async for response in _handle_server_respones(reader, process):
         if response and await _hasResult(response):
-            if config.IS_DEBUGGING:
+            if configs.IS_DEBUGGING:
                 print(f"Result: \n\n{response}\n")
             await _show_last_message(response["result"])
 
