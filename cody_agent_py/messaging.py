@@ -1,7 +1,7 @@
 import asyncio
+from json import JSONDecodeError
 
 import pydantic_core as pd
-from pydantic.json import JSONDecodeError
 
 from cody_agent_py.cody_agent_py import config, message_id
 
