@@ -7,9 +7,9 @@ from cody_agent_py.client_info import ClientInfo
 from cody_agent_py.cody_agent_py import (
     cleanup_server_connection,
     create_server_connection,
+    get_configs,
     new_chat_session,
     send_initialization_message,
-    get_configs,
     submit_chat_message,
 )
 
