@@ -1,8 +1,11 @@
 import asyncio
 import os
 import sys
+from asyncio.subprocess import Process
 
-from .config import Config
+from cody_agent_py.client_info import ClientInfo
+
+from .config import Configs
 from .messaging import (
     _handle_server_respones,
     _hasResult,
@@ -13,27 +16,28 @@ from .server_info import ServerInfo
 
 
 async def create_server_connection(
-    configs: Config,
-) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
-    config = configs
-    if config.BINARY_PATH == "" or config.BINARY_PATH is None:
+    configs: Configs,
+) -> tuple[
+    asyncio.StreamReader | None, asyncio.StreamWriter | None, asyncio.subprocess.Process
+]:
+    if configs.BINARY_PATH == "" or configs.BINARY_PATH is None:
         print(
             "You need to specify the BINARY_PATH to an absolute path to the agent binary or to the index.js file. Exiting..."
         )
         sys.exit(1)
-    os.environ["CODY_AGENT_DEBUG_REMOTE"] = str(config.USE_TCP).lower()
-    process = await asyncio.create_subprocess_exec(
-        "bin/agent" if config.USE_BINARY else "node",
-        "jsonrpc" if config.USE_BINARY else f"{config.BINARY_PATH}/index.js",
+    os.environ["CODY_AGENT_DEBUG_REMOTE"] = str(configs.USE_TCP).lower()
+    process: Process = await asyncio.create_subprocess_exec(
+        "bin/agent" if configs.USE_BINARY else "node",
+        "jsonrpc" if configs.USE_BINARY else f"{configs.BINARY_PATH}/index.js",
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         env=os.environ,
     )
 
-    reader = None
-    writer = None
+    reader = process.stdout
+    writer = process.stdin
 
-    if not config.USE_TCP:
+    if not configs.USE_TCP:
         print("--- stdio connection ---")
         reader = process.stdout
         writer = process.stdin
@@ -42,9 +46,11 @@ async def create_server_connection(
         print("--- TCP connection ---")
         while True:
             try:
-                reader, writer = await asyncio.open_connection(*config.SERVER_ADDRESS)
-                print(f"Connected to server: {config.SERVER_ADDRESS}\n")
-                break
+                (reader, writer) = await asyncio.open_connection(
+                    *configs.SERVER_ADDRESS
+                )
+                print(f"Connected to server: {configs.SERVER_ADDRESS}\n")
+                return reader, writer, process
             except ConnectionRefusedError:
                 await asyncio.sleep(0.1)  # Retry after a short delay
 
@@ -52,13 +58,15 @@ async def create_server_connection(
 
 
 async def send_initialization_message(
-    reader, writer, process, client_info, configs
-) -> ServerInfo:
-
+    reader: asyncio.StreamReader,
+    writer: asyncio.StreamWriter,
+    client_info: ClientInfo,
+    configs: Configs,
+) -> ServerInfo | None:
     await _send_jsonrpc_request(
         writer, "initialize", client_info.model_dump(warnings=True)
     )
-    async for response in _handle_server_respones(reader, process):
+    async for response in _handle_server_respones(reader):
         if configs.IS_DEBUGGING:
             print(f"Response: \n\n{response}\n")
         if response and await _hasResult(response):
@@ -66,19 +74,21 @@ async def send_initialization_message(
             if configs.IS_DEBUGGING:
                 print(f"Server Info: {server_info}\n")
             return server_info
+    return None
 
 
-async def new_chat_session(reader, writer, process, configs) -> str:
+async def new_chat_session(reader, writer, configs) -> str | None:
     await _send_jsonrpc_request(writer, "chat/new", None)
-    async for response in _handle_server_respones(reader, process):
+    async for response in _handle_server_respones(reader):
         if response and await _hasResult(response):
             result_id = response["result"]
             if configs.IS_DEBUGGING:
                 print(f"Result: \n\n{result_id}\n")
             return result_id
+    return None
 
 
-async def submit_chat_message(reader, writer, process, text, result_id, configs):
+async def submit_chat_message(reader, writer, text, result_id, configs):
     chat_message_request = {
         "id": f"{result_id}",
         "message": {
@@ -88,7 +98,7 @@ async def submit_chat_message(reader, writer, process, text, result_id, configs)
         },
     }
     await _send_jsonrpc_request(writer, "chat/submitMessage", chat_message_request)
-    async for response in _handle_server_respones(reader, process):
+    async for response in _handle_server_respones(reader):
         if response and await _hasResult(response):
             if configs.IS_DEBUGGING:
                 print(f"Result: \n\n{response}\n")
@@ -96,7 +106,7 @@ async def submit_chat_message(reader, writer, process, text, result_id, configs)
 
 
 async def cleanup_server_connection(writer, process):
-    await _send_jsonrpc_request(writer, "exit", None)
+    await _send_jsonrpc_request(writer, "shutdown", None)
     if process.returncode is None:
         process.terminate()
     await process.wait()

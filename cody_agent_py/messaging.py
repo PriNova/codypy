@@ -1,13 +1,19 @@
 import asyncio
 from json import JSONDecodeError
+from typing import Any, AsyncGenerator, Dict
 
 import pydantic_core as pd
 
+from cody_agent_py.config import Configs
+
 message_id = 1
 
-async def _send_jsonrpc_request(writer, method, params):
+
+async def _send_jsonrpc_request(
+    writer: asyncio.StreamWriter, method: str, params: Dict[str, Any] | None
+) -> None:
     global message_id
-    message = {
+    message: Dict[str, Any] = {
         "jsonrpc": "2.0",
         "id": message_id,
         "method": method,
@@ -15,9 +21,9 @@ async def _send_jsonrpc_request(writer, method, params):
     }
 
     # Convert the message to JSON string
-    json_message: bytes = pd.to_json(message).decode()
+    json_message: str = pd.to_json(message).decode()
     content_length: int = len(json_message)
-    content_message = f"Content-Length: {content_length}\r\n\r\n{json_message}"
+    content_message: str = f"Content-Length: {content_length}\r\n\r\n{json_message}"
 
     # Send the JSON-RPC message to the server
     writer.write(content_message.encode("utf-8"))
@@ -25,48 +31,53 @@ async def _send_jsonrpc_request(writer, method, params):
     message_id += 1
 
 
-async def _receive_jsonrpc_messages(reader):
-    headers = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5.0)
-    headers = headers.decode("utf-8")
-    content_length = int(headers.split("Content-Length:")[1].strip())
+async def _receive_jsonrpc_messages(reader: asyncio.StreamReader) -> str:
+    headers: bytes = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5.0)
+    content_length: int = int(
+        headers.decode("utf-8").split("Content-Length:")[1].strip()
+    )
 
-    json_data = await asyncio.wait_for(reader.readexactly(content_length), timeout=5.0)
+    json_data: bytes = await asyncio.wait_for(
+        reader.readexactly(content_length), timeout=5.0
+    )
     return json_data.decode("utf-8")
 
 
-async def _handle_server_respones(reader, process):
+async def _handle_server_respones(
+    reader: asyncio.StreamReader,
+) -> AsyncGenerator[Dict[str, Any], Any]:
     try:
         while True:
-            response = await _receive_jsonrpc_messages(reader)
+            response: str = await _receive_jsonrpc_messages(reader)
             yield pd.from_json(response)
     except asyncio.TimeoutError:
-        pass
+        yield pd.from_json("{}")
 
 
-async def _hasMethod(json_response) -> bool:
+async def _hasMethod(json_response: Dict[str, Any]) -> bool:
     return "method" in json_response
 
 
-async def _hasResult(json_response) -> bool:
+async def _hasResult(json_response: Dict[str, Any]) -> bool:
     return "result" in json_response
 
 
-async def _extraxtResult(json_response) -> str:
+async def _extraxtResult(json_response: Dict[str, Any]) -> Dict[str, Any] | None:
     try:
         return json_response["result"]
     except JSONDecodeError as e:
-        None
+        return None
 
 
-async def _extraxtMethod(json_response) -> str:
+async def _extraxtMethod(json_response) -> Dict[str, Any] | None:
     try:
         return json_response["method"]
     except JSONDecodeError as e:
         return None
 
 
-async def _handle_json_data(json_data, configs):
-    json_response = pd.from_json(json_data)
+async def _handle_json_data(json_data, configs: Configs) -> Dict[str, Any] | None:
+    json_response: Dict[str, Any] = pd.from_json(json_data)
     if await _hasMethod(json_response):
         if configs.IS_DEBUGGING:
             print(f"Method: {json_response['method']}\n")
@@ -82,7 +93,7 @@ async def _handle_json_data(json_data, configs):
     return json_response
 
 
-async def _show_last_message(messages, configs):
+async def _show_last_message(messages, configs: Configs) -> None:
     if messages["type"] == "transcript":
         last_message = messages["messages"][-1:]
         if configs.IS_DEBUGGING:
@@ -93,7 +104,7 @@ async def _show_last_message(messages, configs):
         print(output)
 
 
-async def _show_messages(message, configs):
+async def _show_messages(message, configs: Configs) -> None:
     if message["type"] == "transcript":
         for message in message["messages"]:
             if configs.IS_DEBUGGING:

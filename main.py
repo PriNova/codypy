@@ -11,17 +11,23 @@ from cody_agent_py.cody_agent_py import (
     send_initialization_message,
     submit_chat_message,
 )
-from cody_agent_py.config import get_configs
+from cody_agent_py.config import Configs, get_configs
+from cody_agent_py.server_info import ServerInfo
 
 load_dotenv()
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
 
 async def main():
-    configs = await get_configs()
+    configs: Configs = await get_configs()
     configs.BINARY_PATH = "/home/prinova/CodeProjects/cody/agent/dist"
-    configs.IS_DEBUGGING = False
+    configs.IS_DEBUGGING = True
+
     (reader, writer, process) = await create_server_connection(configs)
+    if reader is None or writer is None:
+        print("--- Failed to connect to server ---")
+        cleanup_server_connection(writer, process)
+        return None
 
     # Initialize the agent
     print("--- Initialize Agent ---")
@@ -32,9 +38,14 @@ async def main():
             "codebase": "github.com/sourcegraph/cody",
         },
     )
-    server_info = await send_initialization_message(
-        reader, writer, process, client_info, configs
+
+    server_info: ServerInfo | None = await send_initialization_message(
+        reader, writer, client_info, configs
     )
+    if server_info is None:
+        print("--- Failed to initialize agent ---")
+        cleanup_server_connection(writer, process)
+        return None
 
     if server_info.authenticated:
         print("--- Server is authenticated ---")
@@ -45,18 +56,18 @@ async def main():
 
     # create a new chat
     print("--- Create new chat ---")
-    result_id = await new_chat_session(reader, writer, process, configs)
+    result_id: str | None = await new_chat_session(reader, writer, configs)
 
     # submit a chat message
     print("--- Send message (short) ---")
 
     # Wait for input from user in the CLI terminal
     text: str = input("Enter message: ")
-    await submit_chat_message(reader, writer, process, text, result_id, configs)
+    await submit_chat_message(reader, writer, text, result_id, configs)
 
     # second input to show if conversation works
-    text: str = input("Enter message: ")
-    await submit_chat_message(reader, writer, process, text, result_id, configs)
+    new_text: str = input("Enter message: ")
+    await submit_chat_message(reader, writer, new_text, result_id, configs)
 
     # clean up server connection
     print("--- Cleanup server connection ---")

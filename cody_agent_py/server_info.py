@@ -1,13 +1,15 @@
 from pydantic import BaseModel
 
+
 class CodyLLMSiteConfiguration(BaseModel):
-    chatModel: str = None
-    chatModelMaxTokens: int = None
-    fastChatModel: str = None
-    fastChatModelMaxTokens: int = None
-    completionModel: str = None
-    completionModelMaxTokens: int = None
-    provider: str = None
+    chatModel: str | None = None
+    chatModelMaxTokens: int | None = None
+    fastChatModel: str | None = None
+    fastChatModelMaxTokens: int | None = None
+    completionModel: str | None = None
+    completionModelMaxTokens: int | None = None
+    provider: str | None = None
+
 
 class AuthStatus(BaseModel):
     endpoint: str
@@ -22,14 +24,14 @@ class AuthStatus(BaseModel):
     userCanUpgrade: bool
     username: str
     primaryEmail: str
-    displayName: str = None
+    displayName: str | None = None
     avatarURL: str
-    configOverwrites: CodyLLMSiteConfiguration = None
+    configOverwrites: CodyLLMSiteConfiguration | None = None
 
 
 class ServerInfo(BaseModel):
     name: str
-    authenticated: bool = None
-    cody_enabled: bool = None
-    cody_version: str = None
-    authStatus: AuthStatus = None
+    authenticated: bool | None = None
+    cody_enabled: bool | None = None
+    cody_version: str | None = None
+    authStatus: AuthStatus | None = None

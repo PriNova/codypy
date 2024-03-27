@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Config:
+class Configs:
     BINARY_PATH: str
     SERVER_ADDRESS = ("localhost", 3113)
     WORKSPACE: str = ""
@@ -11,8 +11,8 @@ class Config:
     IS_DEBUGGING: bool = True
 
 
-configs = Config("")
+configs = Configs("")
 
 
-async def get_configs():
+async def get_configs() -> Configs:
     return configs

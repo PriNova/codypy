@@ -1,33 +1,32 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel
 
 
 class ExtensionConfiguration(BaseModel):
-    accessToken: str = ''
+    accessToken: str = ""
     serverEndpoint: str = "https://sourcegraph.com"
-    codebase: str = None
-    proxy: str = None
-    
+    codebase: str | None = None
+    proxy: str | None = None
+
     customHeaders: dict[str, str] = {}
 
     # anonymousUserID is an important component of telemetry events that get
     # recorded. It is currently optional for backwards compatibility, but
     # it is strongly recommended to set this when connecting to Agent.
-    anonymousUserID: str = None
+    anonymousUserID: str | None = None
 
-    autocompleteAdvancedProvider: str = None
-    autocompleteAdvancedModel: str = None
-    debug: bool = None
-    verboseDebug: bool = None
-    
+    autocompleteAdvancedProvider: str | None = None
+    autocompleteAdvancedModel: str | None = None
+    debug: bool | None = None
+    verboseDebug: bool | None = None
 
     # When passed, the Agent will handle recording events.
     # If not passed, client must send `graphql/logEvent` requests manually.
     # @deprecated This is only used for the legacy logEvent - use `telemetry` instead.
-    eventProperties: dict = None
+    eventProperties: dict | None = None
 
-    customConfiguration: dict = None
+    customConfiguration: dict | None = None
 
 
 class ClientCapabilities(BaseModel):
@@ -44,27 +43,26 @@ class ClientCapabilities(BaseModel):
 
 
 class ClientInfo(BaseModel):
-    name: str = 'defaultClient'
+    name: str = "defaultClient"
     version: str = "v1"
-    workspaceRootUri: str
+    workspaceRootUri: str | None = None
 
     # @deprecated Use `workspaceRootUri` instead.
-    workspaceRootPath: str = None
+    workspaceRootPath: str | None = None
 
-    extensionConfiguration: ExtensionConfiguration = None
-    capabilities: ClientCapabilities = None
+    extensionConfiguration: ExtensionConfiguration | None = None
+    capabilities: ClientCapabilities | None = None
 
     #
     # Optional tracking attributes to inject into telemetry events recorded
     # by the agent.
     #
-    #marketingTracking: TelemetryEventMarketingTrackingInput = None
+    # marketingTracking: TelemetryEventMarketingTrackingInput = None
 
-    def __init__(self, name = 'defaultClient', version = "v1", workspaceRootUri = '', **data):
+    def __init__(self, name="defaultClient", version="v1", workspaceRootUri="", **data):
         super().__init__(
             name=name, version=version, workspaceRootUri=workspaceRootUri, **data
         )
         self.name = name
         self.version = version
         self.workspaceRootPath = workspaceRootUri
-
