@@ -4,7 +4,7 @@ from typing import Any, AsyncGenerator, Dict
 
 import pydantic_core as pd
 
-from cody_agent_py.config import Configs
+from cody_agent_py.config import Configs, debug_method_map
 
 message_id = 1
 
@@ -112,14 +112,22 @@ async def _show_messages(message, configs: Configs) -> None:
                 print(output)
 
 
-async def request_response(method, params, reader, writer, configs, callback=None) -> Any | None:
-    await _send_jsonrpc_request(writer, method, params)
+async def request_response(
+    method_name, params, debug_method_map, reader, writer, configs, callback=None
+) -> Any | None:
+    await _send_jsonrpc_request(writer, method_name, params)
     async for response in _handle_server_respones(reader):
-        if configs.IS_DEBUGGING:
-            print(f"Response: \n\n{response}\n")
+        if configs.IS_DEBUGGING and await _hasMethod(response):
+            method_name = response["method"]
+            if method_name in debug_method_map and debug_method_map[method_name]:
+                print(f"Response: \n\n{response}\n")
+            if method_name not in debug_method_map:
+                print(f"Response: \n\n{response}\n")
+
         if response and await _hasResult(response):
             if configs.IS_DEBUGGING:
                 print(f"Result: \n\n{response}\n")
             if callback:
                 return await callback(response["result"])
+
     return None

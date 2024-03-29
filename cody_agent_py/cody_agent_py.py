@@ -59,6 +59,7 @@ async def send_initialization_message(
     writer: asyncio.StreamWriter,
     client_info: ClientInfo,
     configs: Configs,
+    debug_method_map,
 ) -> ServerInfo | None:
     async def callback(result):
         server_info: ServerInfo = ServerInfo.model_validate(result)
@@ -67,18 +68,30 @@ async def send_initialization_message(
         return server_info
 
     return await request_response(
-        "initialize", client_info.model_dump(), reader, writer, configs, callback
+        "initialize",
+        client_info.model_dump(),
+        debug_method_map,
+        reader,
+        writer,
+        configs,
+        callback,
     )
 
 
-async def new_chat_session(reader, writer, configs: Configs) -> str | None:
+async def new_chat_session(
+    reader, writer, configs: Configs, debug_method_map
+) -> str | None:
     async def callback(result):
         return result
 
-    return await request_response("chat/new", None, reader, writer, configs, callback)
+    return await request_response(
+        "chat/new", None, debug_method_map, reader, writer, configs, callback
+    )
 
 
-async def submit_chat_message(reader, writer, text, result_id, configs: Configs):
+async def submit_chat_message(
+    reader, writer, text, result_id, configs: Configs, debug_method_map
+) -> None:
     chat_message_request = {
         "id": f"{result_id}",
         "message": {
@@ -92,7 +105,7 @@ async def submit_chat_message(reader, writer, text, result_id, configs: Configs)
         await _show_last_message(result, configs)
 
     await request_response(
-        "chat/submitMessage", chat_message_request, reader, writer, configs, callback
+        "chat/submitMessage", chat_message_request, debug_method_map, reader, writer, configs, callback
     )
 
 

@@ -16,3 +16,18 @@ configs = Configs("")
 
 async def get_configs() -> Configs:
     return configs
+
+
+"""
+A dictionary that controls the debugging behavior of the application.
+
+@keys: response methods
+@values: boolean values that control the debugging behavior of the application.
+"""
+debug_method_map = {
+    "debug/message": True,
+    "webview/postMessage": True,
+}
+
+async def get_debug_map():
+    return debug_method_map
