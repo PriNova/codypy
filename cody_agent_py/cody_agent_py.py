@@ -4,14 +4,10 @@ import sys
 from asyncio.subprocess import Process
 
 from cody_agent_py.client_info import ClientInfo
+from cody_agent_py.messaging import request_response
 
 from .config import Configs
-from .messaging import (
-    _handle_server_respones,
-    _hasResult,
-    _send_jsonrpc_request,
-    _show_last_message,
-)
+from .messaging import _send_jsonrpc_request, _show_last_message, request_response
 from .server_info import ServerInfo
 
 
@@ -26,6 +22,7 @@ async def create_server_connection(
         )
         sys.exit(1)
     os.environ["CODY_AGENT_DEBUG_REMOTE"] = str(configs.USE_TCP).lower()
+    os.environ["CODY_DEBUG"] = str(configs.IS_DEBUGGING).lower()
     process: Process = await asyncio.create_subprocess_exec(
         "bin/agent" if configs.USE_BINARY else "node",
         "jsonrpc" if configs.USE_BINARY else f"{configs.BINARY_PATH}/index.js",
@@ -63,32 +60,25 @@ async def send_initialization_message(
     client_info: ClientInfo,
     configs: Configs,
 ) -> ServerInfo | None:
-    await _send_jsonrpc_request(
-        writer, "initialize", client_info.model_dump(warnings=True)
-    )
-    async for response in _handle_server_respones(reader):
+    async def callback(result):
+        server_info: ServerInfo = ServerInfo.model_validate(result)
         if configs.IS_DEBUGGING:
-            print(f"Response: \n\n{response}\n")
-        if response and await _hasResult(response):
-            server_info: ServerInfo = ServerInfo.model_validate(response["result"])
-            if configs.IS_DEBUGGING:
-                print(f"Server Info: {server_info}\n")
-            return server_info
-    return None
+            print(f"Server Info: {server_info}\n")
+        return server_info
+
+    return await request_response(
+        "initialize", client_info.model_dump(), reader, writer, configs, callback
+    )
 
 
-async def new_chat_session(reader, writer, configs) -> str | None:
-    await _send_jsonrpc_request(writer, "chat/new", None)
-    async for response in _handle_server_respones(reader):
-        if response and await _hasResult(response):
-            result_id = response["result"]
-            if configs.IS_DEBUGGING:
-                print(f"Result: \n\n{result_id}\n")
-            return result_id
-    return None
+async def new_chat_session(reader, writer, configs: Configs) -> str | None:
+    async def callback(result):
+        return result
+
+    return await request_response("chat/new", None, reader, writer, configs, callback)
 
 
-async def submit_chat_message(reader, writer, text, result_id, configs):
+async def submit_chat_message(reader, writer, text, result_id, configs: Configs):
     chat_message_request = {
         "id": f"{result_id}",
         "message": {
@@ -97,12 +87,13 @@ async def submit_chat_message(reader, writer, text, result_id, configs):
             "submitType": "user",
         },
     }
-    await _send_jsonrpc_request(writer, "chat/submitMessage", chat_message_request)
-    async for response in _handle_server_respones(reader):
-        if response and await _hasResult(response):
-            if configs.IS_DEBUGGING:
-                print(f"Result: \n\n{response}\n")
-            await _show_last_message(response["result"], configs)
+
+    async def callback(result):
+        await _show_last_message(result, configs)
+
+    await request_response(
+        "chat/submitMessage", chat_message_request, reader, writer, configs, callback
+    )
 
 
 async def cleanup_server_connection(writer, process):

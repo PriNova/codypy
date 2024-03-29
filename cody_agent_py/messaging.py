@@ -110,3 +110,16 @@ async def _show_messages(message, configs: Configs) -> None:
             if configs.IS_DEBUGGING:
                 output = f"{message['speaker']}: {message['text']}\n"
                 print(output)
+
+
+async def request_response(method, params, reader, writer, configs, callback=None) -> Any | None:
+    await _send_jsonrpc_request(writer, method, params)
+    async for response in _handle_server_respones(reader):
+        if configs.IS_DEBUGGING:
+            print(f"Response: \n\n{response}\n")
+        if response and await _hasResult(response):
+            if configs.IS_DEBUGGING:
+                print(f"Result: \n\n{response}\n")
+            if callback:
+                return await callback(response["result"])
+    return None

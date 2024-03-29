@@ -21,6 +21,7 @@ ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 async def main():
     configs: Configs = await get_configs()
     configs.BINARY_PATH = "/home/prinova/CodeProjects/cody/agent/dist"
+    configs.WORKSPACE = "/home/prinova/CodeProjects/codyTests"
     configs.IS_DEBUGGING = True
 
     (reader, writer, process) = await create_server_connection(configs)
@@ -44,15 +45,15 @@ async def main():
     )
     if server_info is None:
         print("--- Failed to initialize agent ---")
-        cleanup_server_connection(writer, process)
+        await cleanup_server_connection(writer, process)
         return None
 
     if server_info.authenticated:
         print("--- Server is authenticated ---")
     else:
         print("--- Server is not authenticated ---")
-        cleanup_server_connection(writer, process)
-        return
+        await cleanup_server_connection(writer, process)
+        return None
 
     # create a new chat
     print("--- Create new chat ---")
