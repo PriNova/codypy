@@ -1,10 +1,10 @@
 import asyncio
 from json import JSONDecodeError
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict, Tuple
 
 import pydantic_core as pd
 
-from cody_agent_py.config import Configs, debug_method_map
+from cody_agent_py.config import Configs
 
 message_id = 1
 
@@ -93,15 +93,16 @@ async def _handle_json_data(json_data, configs: Configs) -> Dict[str, Any] | Non
     return json_response
 
 
-async def _show_last_message(messages, configs: Configs) -> None:
+async def _show_last_message(messages: Dict[str, Any], configs: Configs) -> Tuple[str, str]:
     if messages["type"] == "transcript":
         last_message = messages["messages"][-1:]
         if configs.IS_DEBUGGING:
-            print(f"Last message: {last_message}")
-        speaker = last_message[0]["speaker"]
-        text = last_message[0]["text"]
-        output = f"{speaker}: {text}\n"
-        print(output)
+            print(f"Last message: {messages["result"]}")
+        speaker: str = last_message[0]["speaker"]
+        text: str = last_message[0]["text"]
+        #output = f"{speaker}: {text}\n"
+        return (speaker, text)
+    return ("", "")
 
 
 async def _show_messages(message, configs: Configs) -> None:
@@ -114,7 +115,7 @@ async def _show_messages(message, configs: Configs) -> None:
 
 async def request_response(
     method_name, params, debug_method_map, reader, writer, configs, callback=None
-) -> Any | None:
+) -> Any:
     await _send_jsonrpc_request(writer, method_name, params)
     async for response in _handle_server_respones(reader):
         if configs.IS_DEBUGGING and await _hasMethod(response):

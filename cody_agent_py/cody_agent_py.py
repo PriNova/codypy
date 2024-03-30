@@ -2,6 +2,7 @@ import asyncio
 import os
 import sys
 from asyncio.subprocess import Process
+from typing import Any, Dict, Tuple
 
 from cody_agent_py.client_info import ClientInfo
 from cody_agent_py.messaging import request_response
@@ -80,7 +81,7 @@ async def send_initialization_message(
 
 async def new_chat_session(
     reader, writer, configs: Configs, debug_method_map
-) -> str | None:
+) -> str:
     async def callback(result):
         return result
 
@@ -90,10 +91,10 @@ async def new_chat_session(
 
 
 async def submit_chat_message(
-    reader, writer, text, result_id, configs: Configs, debug_method_map
-) -> None:
+    reader, writer, text, id, configs: Configs, debug_method_map
+) -> Tuple[str, str]:
     chat_message_request = {
-        "id": f"{result_id}",
+        "id": f"{id}",
         "message": {
             "command": "submit",
             "text": text,
@@ -101,11 +102,24 @@ async def submit_chat_message(
         },
     }
 
-    async def callback(result):
-        await _show_last_message(result, configs)
+    async def callback(result) -> Tuple[str, str]:
+        return await _show_last_message(result, configs)
 
-    await request_response(
+    return await request_response(
         "chat/submitMessage", chat_message_request, debug_method_map, reader, writer, configs, callback
+    )
+
+
+async def get_models(
+    reader, writer, model_type, configs: Configs, debug_method_map
+) -> Any:
+    async def callback(result):
+        return result
+    model = {
+        "modelUsage" : f"{model_type}"
+    }
+    return await request_response(
+        'chat/models', model, debug_method_map, reader, writer, configs, callback
     )
 
 

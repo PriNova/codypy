@@ -7,6 +7,7 @@ from cody_agent_py.client_info import ClientInfo
 from cody_agent_py.cody_agent_py import (
     cleanup_server_connection,
     create_server_connection,
+    get_models,
     new_chat_session,
     send_initialization_message,
     submit_chat_message,
@@ -56,11 +57,20 @@ async def main():
         print("--- Server is not authenticated ---")
         await cleanup_server_connection(writer, process)
         return None
-
+    
+    debug_method_map["webview/postMessage"] = False
+    print("--- Retrieve Chat Models ---\n")     
+    models = await get_models(reader, writer, 'edit', configs, debug_method_map)
+    print(models)
+    await cleanup_server_connection(writer, process)
+    return None
+    
     # create a new chat
     print("--- Create new chat ---")
-    result_id: str | None = await new_chat_session(reader, writer, configs, debug_method_map)
+    result_id: str = await new_chat_session(reader, writer, configs, debug_method_map)
+    # result_id for restoring: 1d442f4f-d022-4d99-a1f5-8b8b7b26e3dc
 
+    
     # submit a chat message
     print("--- Send message (short) ---")
 
@@ -69,12 +79,28 @@ async def main():
     
     # Wait for input from user in the CLI terminal
     text: str = input("Enter message: ")
-    await submit_chat_message(reader, writer, text, result_id, configs, debug_method_map)
-
+    (speaker, message) = await submit_chat_message(reader, writer, text, result_id, configs, debug_method_map)
+    
+    if speaker == "" or message == "":
+        print("--- Failed to submit chat message ---")
+        await cleanup_server_connection(writer, process)
+        return None
+    
+    output = f"{speaker}: {message}\n"
+    print(output)
+    
     # second input to show if conversation works
     new_text: str = input("Enter message: ")
-    await submit_chat_message(reader, writer, new_text, result_id, configs, debug_method_map)
-
+    (speaker, message) = await submit_chat_message(reader, writer, new_text, result_id, configs, debug_method_map)
+    
+    if speaker == "" or message == "":
+        print("--- Failed to submit chat message ---")
+        await cleanup_server_connection(writer, process)
+        return None
+    
+    output = f"{speaker}: {message}\n"
+    print(output)
+    
     debug_method_map["webview/postMessage"] = True
     
     # clean up server connection
