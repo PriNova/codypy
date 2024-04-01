@@ -93,14 +93,17 @@ async def _handle_json_data(json_data, configs: Configs) -> Dict[str, Any] | Non
     return json_response
 
 
-async def _show_last_message(messages: Dict[str, Any], configs: Configs) -> Tuple[str, str]:
+async def _show_last_message(
+    messages: Dict[str, Any], configs: Configs
+) -> Tuple[str, str]:
     if messages["type"] == "transcript":
         last_message = messages["messages"][-1:]
+        print(messages)
         if configs.IS_DEBUGGING:
-            print(f"Last message: {messages["result"]}")
+            print(f"Last message: {last_message}")
         speaker: str = last_message[0]["speaker"]
         text: str = last_message[0]["text"]
-        #output = f"{speaker}: {text}\n"
+        # output = f"{speaker}: {text}\n"
         return (speaker, text)
     return ("", "")
 
@@ -114,7 +117,7 @@ async def _show_messages(message, configs: Configs) -> None:
 
 
 async def request_response(
-    method_name, params, debug_method_map, reader, writer, configs, callback=None
+    method_name: str, params, debug_method_map, reader, writer, configs, callback=None
 ) -> Any:
     await _send_jsonrpc_request(writer, method_name, params)
     async for response in _handle_server_respones(reader):

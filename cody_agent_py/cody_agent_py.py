@@ -2,7 +2,7 @@ import asyncio
 import os
 import sys
 from asyncio.subprocess import Process
-from typing import Any, Dict, Tuple
+from typing import Any, Tuple
 
 from cody_agent_py.client_info import ClientInfo
 from cody_agent_py.messaging import request_response
@@ -79,9 +79,7 @@ async def send_initialization_message(
     )
 
 
-async def new_chat_session(
-    reader, writer, configs: Configs, debug_method_map
-) -> str:
+async def new_chat_session(reader, writer, configs: Configs, debug_method_map) -> str:
     async def callback(result):
         return result
 
@@ -106,7 +104,13 @@ async def submit_chat_message(
         return await _show_last_message(result, configs)
 
     return await request_response(
-        "chat/submitMessage", chat_message_request, debug_method_map, reader, writer, configs, callback
+        "chat/submitMessage",
+        chat_message_request,
+        debug_method_map,
+        reader,
+        writer,
+        configs,
+        callback,
     )
 
 
@@ -115,11 +119,57 @@ async def get_models(
 ) -> Any:
     async def callback(result):
         return result
-    model = {
-        "modelUsage" : f"{model_type}"
-    }
+
+    model = {"modelUsage": f"{model_type}"}
     return await request_response(
-        'chat/models', model, debug_method_map, reader, writer, configs, callback
+        "chat/models", model, debug_method_map, reader, writer, configs, callback
+    )
+
+
+async def get_remote_repositories(
+    reader, writer, id: str, configs: Configs, debug_method_map
+) -> Any:
+    async def callback(result):
+        return result
+
+    return await request_response(
+        "chat/remoteRepos", id, debug_method_map, reader, writer, configs, callback
+    )
+
+
+async def set_model(
+    reader, writer, id: str, model: str, configs: Configs, debug_method_map
+) -> Any:
+    async def callback(result):
+        return result
+
+    command = {"id": f"{id}", "message": {"command": "chatModel", "model": f"{model}"}}
+
+    return await request_response(
+        "webview/receiveMessage",
+        command,
+        debug_method_map,
+        reader,
+        writer,
+        configs,
+        callback,
+    )
+
+
+async def receive_webviewmessage(
+    reader, writer, params, configs: Configs, debug_method_map
+) -> Any:
+    async def callback(result):
+        return result
+
+    return await request_response(
+        "webview/receiveMessage",
+        params,
+        debug_method_map,
+        reader,
+        writer,
+        configs,
+        callback,
     )
 
 

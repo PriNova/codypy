@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Dict, Any
 
 from pydantic import BaseModel
 
@@ -9,7 +9,7 @@ class ExtensionConfiguration(BaseModel):
     codebase: str | None = None
     proxy: str | None = None
 
-    customHeaders: dict[str, str] = {}
+    customHeaders: Dict[str, str] = {}
 
     # anonymousUserID is an important component of telemetry events that get
     # recorded. It is currently optional for backwards compatibility, but
@@ -24,9 +24,9 @@ class ExtensionConfiguration(BaseModel):
     # When passed, the Agent will handle recording events.
     # If not passed, client must send `graphql/logEvent` requests manually.
     # @deprecated This is only used for the legacy logEvent - use `telemetry` instead.
-    eventProperties: dict | None = None
+    eventProperties: Dict | None = None
 
-    customConfiguration: dict | None = None
+    customConfiguration: Dict | None = None
 
 
 class ClientCapabilities(BaseModel):
