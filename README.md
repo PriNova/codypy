@@ -76,7 +76,7 @@ You are now ready to use CodyAgentPy!
 
 ## Example
 
-For an example of initializing and send two chat messages, look at [main.py](/home/prinova/CodeProjects/CodyAgentPy/main.py) file
+For an example of initializing and send two chat messages, look at [main.py](https://github.com/PriNova/CodyAgentPy/blob/main/main.py) file
 
 This example demonstrates how to use a complete cycle to establish a connection to the server and process JSON-RPC messages.
 
