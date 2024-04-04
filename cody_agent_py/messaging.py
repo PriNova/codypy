@@ -103,8 +103,7 @@ async def _show_last_message(
             print(f"Last message: {last_message}")
         speaker: str = last_message[0]["speaker"]
         text: str = last_message[0]["text"]
-        # output = f"{speaker}: {text}\n"
-        return (speaker, text)
+        return (speaker.capitalize(), text)
     return ("", "")
 
 

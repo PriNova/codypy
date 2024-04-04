@@ -3,3 +3,4 @@ bin
 .env
 .cody
 __pycache__
+CodyAgentPy.egg-info/

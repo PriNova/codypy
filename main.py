@@ -4,15 +4,7 @@ import os
 from dotenv import load_dotenv
 
 from cody_agent_py.client_info import ClientInfo
-from cody_agent_py.cody_agent_py import (
-    cleanup_server_connection,
-    create_server_connection,
-    get_models,
-    new_chat_session,
-    send_initialization_message,
-    set_model,
-    submit_chat_message,
-)
+from cody_agent_py.cody_agent_py import CodyAgent
 from cody_agent_py.config import Configs, get_configs, get_debug_map
 from cody_agent_py.server_info import ServerInfo
 
@@ -28,11 +20,7 @@ async def main():
 
     debug_method_map = await get_debug_map()
 
-    (reader, writer, process) = await create_server_connection(configs)
-    if reader is None or writer is None:
-        print("--- Failed to connect to server ---")
-        cleanup_server_connection(writer, process)
-        return None
+    agentClient = await CodyAgent.create( ACCESS_TOKEN, configs)
 
     # Initialize the agent
     print("--- Initialize Agent ---")
@@ -45,22 +33,13 @@ async def main():
         },
     )
 
-    server_info: ServerInfo | None = await send_initialization_message(
-        reader, writer, client_info, configs, debug_method_map
+    server_info: ServerInfo | None = await agentClient.send_initialization_message(
+        client_info, configs, debug_method_map
     )
-    if server_info is None:
-        print("--- Failed to initialize agent ---")
-        await cleanup_server_connection(writer, process)
-        return None
+    
+    print(server_info)
 
-    if server_info.authenticated:
-        print("--- Server is authenticated ---")
-    else:
-        print("--- Server is not authenticated ---")
-        await cleanup_server_connection(writer, process)
-        return None
-
-    print("--- Retrieve Chat Models ---\n")
+    """print("--- Retrieve Chat Models ---\n")
     models = await get_models(reader, writer, "chat", configs, debug_method_map)
     print(models)
 
@@ -69,7 +48,12 @@ async def main():
 
     print("--- Set Chat Model ---")
     result = await set_model(
-        reader, writer, result_id, "openai/gpt-3.5-turbo", configs, debug_method_map
+        reader,
+        writer,
+        result_id,
+        "anthropic/claude-3-opus-20240229",
+        configs,
+        debug_method_map,
     )
     print(result)
 
@@ -80,9 +64,19 @@ async def main():
     debug_method_map["webview/postMessage"] = False
 
     # Wait for input from user in the CLI terminal
-    text: str = input("Enter message: ")
+    text: str = input("Human: ")
+    contextFiles = [
+        {
+            "type": "http",
+            "uri": {
+                "fsPath": "/home/prinova/CodeProjects/CodyAgentPy/cody_agent_py/config.py",
+                "path": "/home/prinova/CodeProjects/CodyAgentPy/cody_agent_py/config.py",
+            },
+        }
+    ]
+    print(configs)
     (speaker, message) = await submit_chat_message(
-        reader, writer, text, result_id, configs, debug_method_map
+        reader, writer, text, True, contextFiles, result_id, configs, debug_method_map
     )
 
     if speaker == "" or message == "":
@@ -94,10 +88,10 @@ async def main():
     print(output)
 
     debug_method_map["webview/postMessage"] = True
-
+"""
     # clean up server connection
     print("--- Cleanup server connection ---")
-    await cleanup_server_connection(writer, process)
+    await agentClient.cleanup_server_connection()
 
 
 if __name__ == "__main__":
