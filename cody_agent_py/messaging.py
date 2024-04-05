@@ -94,17 +94,16 @@ async def _handle_json_data(json_data, configs: Configs) -> Dict[str, Any] | Non
 
 
 async def _show_last_message(
-    messages: Dict[str, Any], configs: Configs
+    messages: Dict[str, Any], is_debugging: bool
 ) -> Tuple[str, str]:
     if messages["type"] == "transcript":
         last_message = messages["messages"][-1:]
-        print(messages)
-        if configs.IS_DEBUGGING:
+        if is_debugging:
             print(f"Last message: {last_message}")
         speaker: str = last_message[0]["speaker"]
         text: str = last_message[0]["text"]
         # output = f"{speaker}: {text}\n"
-        return (speaker, text)
+        return speaker, text
     return ("", "")
 
 
@@ -117,11 +116,17 @@ async def _show_messages(message, configs: Configs) -> None:
 
 
 async def request_response(
-    method_name: str, params, debug_method_map, reader, writer, configs, callback=None
+    method_name: str,
+    params,
+    debug_method_map,
+    reader,
+    writer,
+    is_debugging: bool,
+    callback=None,
 ) -> Any:
     await _send_jsonrpc_request(writer, method_name, params)
     async for response in _handle_server_respones(reader):
-        if configs.IS_DEBUGGING and await _hasMethod(response):
+        if is_debugging and await _hasMethod(response):
             method_name = response["method"]
             if method_name in debug_method_map and debug_method_map[method_name]:
                 print(f"Response: \n\n{response}\n")
@@ -129,7 +134,7 @@ async def request_response(
                 print(f"Response: \n\n{response}\n")
 
         if response and await _hasResult(response):
-            if configs.IS_DEBUGGING:
+            if is_debugging:
                 print(f"Result: \n\n{response}\n")
             if callback:
                 return await callback(response["result"])

@@ -3,3 +3,6 @@ bin
 .env
 .cody
 __pycache__
+CodyAgentPy.egg-info/
+tests/
+.mypy_cache/
