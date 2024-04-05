@@ -29,7 +29,7 @@ CodyAgentPy is a Python wrapper binding to Cody Agent through establishing a con
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/CodyAgentPy.git
+   git clone https://github.com/PriNova/CodyAgentPy.git
    ```
 
 1. Navigate to the project directory:
@@ -89,12 +89,12 @@ This example demonstrates how to use a complete cycle to establish a connection 
 
 ## Roadmap
 
-- [ x ] Improve the parsing and handling of JSON-RPC responses in `receive_jsonrpc_messages()` function.
-- [ x ] Enhance the initialization message in `initializing_message()` function to include additional client information.
-- [ x ] Implement reliable logging functionality to track client-server communication.
+- [x] Improve the parsing and handling of JSON-RPC responses in `receive_jsonrpc_messages()` function.
+- [x] Enhance the initialization message in `initializing_message()` function to include additional client information.
+- [x] Implement reliable logging functionality to track client-server communication.
 - [ ] Add configuration options for server address, port, and other settings.
 - [ ] Develop unit tests for key functions in `CodyAgentPy.py`.
-- [ x ] Create documentation and examples for using the `CodyAgentPy` client library.
+- [x] Create documentation and examples for using the `CodyAgentPy` client library.
 - [ ] Implement support for including additional context about files and folders.
 
 
