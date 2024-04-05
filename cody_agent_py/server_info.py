@@ -29,7 +29,7 @@ class AuthStatus(BaseModel):
     configOverwrites: CodyLLMSiteConfiguration | None = None
 
 
-class ServerInfo(BaseModel):
+class CodyAgentSpecs(BaseModel):
     name: str
     authenticated: bool | None = None
     cody_enabled: bool | None = None

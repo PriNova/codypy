@@ -2,167 +2,208 @@ import asyncio
 import os
 import sys
 from asyncio.subprocess import Process
-from typing import Any, Tuple
+from typing import Any, Literal, Self, Tuple
 
-from cody_agent_py.client_info import ClientInfo
+from cody_agent_py.client_info import AgentSpecs
 from cody_agent_py.messaging import request_response
 
 from .config import Configs
 from .messaging import _send_jsonrpc_request, _show_last_message, request_response
-from .server_info import ServerInfo
+from .server_info import CodyAgentSpecs
 
 
-class CodyAgent:
-    
-    @classmethod
-    async def create(cls, access_token, configs: Configs):
-        self = CodyAgent(access_token, configs)
-        await self._create_server_connection(configs)
-        if self.reader is None or self.writer is None:
-            print("--- Failed to connect to server ---")
-            await self.cleanup_server_connection(self.writer, self.process)
-            return None
-        return self
-        
-    def __init__(self, access_token, configs: Configs):
-        self.access_token = access_token
-        self.configs = configs
-        self.reader = None
-        self.writer = None
-        self.process = None
-        self.server_info: ServerInfo = None
-        
-    async def _create_server_connection(
-        self,
-        configs: Configs,
-    ):
-        if configs.BINARY_PATH == "" or configs.BINARY_PATH is None:
+class CodyClient:
+
+    async def init(
+        binary_path: str, use_tcp: bool = False, is_debugging: bool = False
+    ) -> Self:
+        cody_agent = CodyClient(binary_path, use_tcp, is_debugging)
+        await cody_agent._create_server_connection()
+        return cody_agent
+
+    def __init__(self, binary_path: str, use_tcp: bool, is_debugging: bool) -> None:
+        self.binary_path = binary_path
+        self.use_tcp = use_tcp
+        self.is_debugging = is_debugging
+        self._process: Process | None = None
+        self._reader: asyncio.StreamReader | None = None
+        self._writer: asyncio.StreamWriter | None = None
+
+    async def _create_server_connection(self):
+        if self.binary_path == "":
             print(
                 "You need to specify the BINARY_PATH to an absolute path to the agent binary or to the index.js file. Exiting..."
             )
             sys.exit(1)
-        os.environ["CODY_AGENT_DEBUG_REMOTE"] = str(configs.USE_TCP).lower()
-        os.environ["CODY_DEBUG"] = str(configs.IS_DEBUGGING).lower()
-        self.process: Process = await asyncio.create_subprocess_exec(
-            "bin/agent" if configs.USE_BINARY else "node",
-            "jsonrpc" if configs.USE_BINARY else f"{configs.BINARY_PATH}/index.js",
+
+        os.environ["CODY_AGENT_DEBUG_REMOTE"] = str(self.use_tcp).lower()
+        os.environ["CODY_DEBUG"] = str(self.is_debugging).lower()
+
+        self._process: Process = await asyncio.create_subprocess_exec(
+            "bin/agent" if self.binary_path else "node",
+            "jsonrpc" if self.binary_path else f"{self.binary_path}/index.js",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             env=os.environ,
         )
 
-        self.reader = self.process.stdout
-        self.writer = self.process.stdin
+        self._reader = self._process.stdout
+        self._writer = self._process.stdin
 
-        if not configs.USE_TCP:
+        if not self.use_tcp:
             print("--- stdio connection ---")
-            self.reader = self.process.stdout
-            self.writer = self.process.stdin
+            self._reader = self._process.stdout
+            self._writer = self._process.stdin
 
         else:
             print("--- TCP connection ---")
-            while True:
+            retry: int = 0
+            while retry < 10:
                 try:
-                    (self.reader, self.writer) = await asyncio.open_connection(
-                        *configs.SERVER_ADDRESS
+                    (self._reader, self._writer) = await asyncio.open_connection(
+                        "localhost", 3113
                     )
-                    print(f"Connected to server: {configs.SERVER_ADDRESS}\n")
+                    if self._reader is not None and self._writer is not None:
+                        print(f"Connected to server: localhost:3113\n")
+                        break
+
+                    # return reader, writer, process
                 except ConnectionRefusedError:
                     await asyncio.sleep(0.1)  # Retry after a short delay
+                    retry += 1
+            print("Could not connect to server. Exiting...")
+            sys.exit(1)
 
-    async def send_initialization_message(self,
-        client_info: ClientInfo,
-        configs: Configs,
+    async def set_agent_specs(
+        self,
+        agent_specs: AgentSpecs,
         debug_method_map,
-    ) -> ServerInfo | None:
+        is_debugging: bool = False,
+    ) -> CodyAgentSpecs | None:
         async def callback(result):
-            self.server_info = ServerInfo.model_validate(result)
-            if configs.IS_DEBUGGING:
-                print(f"Server Info: {self.server_info}\n")
-                
-            if self.server_info is None:
-                    print("--- Failed to initialize agent ---")
-                    await self.cleanup_server_connection()
-                    return None
-            if self.server_info.authenticated:
+            cody_agent_specs: CodyAgentSpecs = CodyAgentSpecs.model_validate(result)
+            if is_debugging:
+                print(f"Agent Info: {cody_agent_specs}\n")
+            if cody_agent_specs.authenticated:
                 print("--- Server is authenticated ---")
             else:
                 print("--- Server is not authenticated ---")
-                await self.cleanup_server_connection()
+                await self.cleanup_server_connection(self)
                 return None
-            return self.server_info
+            return await CodyAgent.init(self)
 
         return await request_response(
             "initialize",
-            client_info.model_dump(),
+            agent_specs.model_dump(),
             debug_method_map,
-            self.reader,
-            self.writer,
-            configs,
+            self._reader,
+            self._writer,
+            is_debugging,
             callback,
         )
-    
+
     async def cleanup_server_connection(self):
-        #await _send_jsonrpc_request(self.writer, "shutdown", None)
-        if self.process.returncode is None:
-            self.process.terminate()
-        await self.process.wait()
+        await _send_jsonrpc_request(self._writer, "shutdown", None)
+        if self._process.returncode is None:
+            self._process.terminate()
+        await self._process.wait()
 
 
-async def new_chat_session(reader, writer, configs: Configs, debug_method_map) -> str:
-    async def callback(result):
-        return result
+class CodyAgent:
+    def __init__(self, cody_client: CodyClient) -> None:
+        self._cody_client = cody_client
+        self.chat_id: str | None = None
+        
+    async def init(cody_client: CodyClient):
+        return CodyAgent(cody_client)
+    
+    async def new_chat(self, debug_method_map, is_debugging: bool = False):
+        async def callback(result):
+            self.chat_id = result
+            return result
 
-    return await request_response(
-        "chat/new", None, debug_method_map, reader, writer, configs, callback
-    )
+        await request_response(
+            "chat/new",
+            None,
+            debug_method_map,
+            self._cody_client._reader,
+            self._cody_client._writer,
+            is_debugging,
+            callback,
+        )
 
+    async def get_models(
+        self, model_type: str, debug_method_map, is_debugging: bool = False
+    ) -> Any:
+        async def callback(result):
+            return result
 
-async def submit_chat_message(
-    reader,
-    writer,
-    text,
-    withContext: bool,
-    contextFiles,
-    id,
-    configs: Configs,
-    debug_method_map,
-) -> Tuple[str, str]:
-    chat_message_request = {
-        "id": f"{id}",
-        "message": {
-            "command": "submit",
-            "text": text,
-            "submitType": "user",
-            "addEnhancedContext": withContext,
-            "contextFiles": contextFiles,
-        },
-    }
+        model = {"modelUsage": f"{model_type}"}
+        return await request_response(
+            "chat/models",
+            model,
+            debug_method_map,
+            self._cody_client._reader,
+            self._cody_client._writer,
+            is_debugging,
+            callback,
+        )
 
-    async def callback(result) -> Tuple[str, str]:
-        return await _show_last_message(result, configs)
+    async def set_model(
+        self, model: str, debug_method_map, is_debugging: bool = False
+    ) -> Any:
+        async def callback(result):
+            return result
 
-    return await request_response(
-        "chat/submitMessage",
-        chat_message_request,
+        command = {
+            "id": f"{self.chat_id}",
+            "message": {"command": "chatModel", "model": f"{model}"},
+        }
+
+        return await request_response(
+            "webview/receiveMessage",
+            command,
+            debug_method_map,
+            self._cody_client._reader,
+            self._cody_client._writer,
+            is_debugging,
+            callback,
+        )
+
+    async def submit_chat_message(
+        self,
+        message,
+        enhanced_context: bool,
         debug_method_map,
-        reader,
-        writer,
-        configs,
-        callback,
-    )
+        is_debugging: bool = False,
+    ) -> Tuple[str, str]:
+        
+        if message == "/quit":
+            await self._cody_client.cleanup_server_connection()
+            sys.exit(0)
+            
+        chat_message_request = {
+            "id": f"{self.chat_id}",
+            "message": {
+                "command": "submit",
+                "text": message,
+                "submitType": "user",
+                "addEnhancedContext": enhanced_context,
+            },
+        }
 
+        async def callback(result) -> Tuple[str, str]:
+            return await _show_last_message(result, is_debugging)
 
-async def get_models(
-    reader, writer, model_type, configs: Configs, debug_method_map
-) -> Any:
-    async def callback(result):
-        return result
-
-    model = {"modelUsage": f"{model_type}"}
-    return await request_response(
-        "chat/models", model, debug_method_map, reader, writer, configs, callback
-    )
+        return await request_response(
+            "chat/submitMessage",
+            chat_message_request,
+            debug_method_map,
+            self._cody_client._reader,
+            self._cody_client._writer,
+            is_debugging,
+            callback,
+        )
 
 
 async def get_remote_repositories(
@@ -173,25 +214,6 @@ async def get_remote_repositories(
 
     return await request_response(
         "chat/remoteRepos", id, debug_method_map, reader, writer, configs, callback
-    )
-
-
-async def set_model(
-    reader, writer, id: str, model: str, configs: Configs, debug_method_map
-) -> Any:
-    async def callback(result):
-        return result
-
-    command = {"id": f"{id}", "message": {"command": "chatModel", "model": f"{model}"}}
-
-    return await request_response(
-        "webview/receiveMessage",
-        command,
-        debug_method_map,
-        reader,
-        writer,
-        configs,
-        callback,
     )
 
 
@@ -210,6 +232,3 @@ async def receive_webviewmessage(
         configs,
         callback,
     )
-
-
-

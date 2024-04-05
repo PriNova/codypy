@@ -42,7 +42,7 @@ class ClientCapabilities(BaseModel):
     showWindowMessage: Literal["notification", "request"] = "notification"
 
 
-class ClientInfo(BaseModel):
+class AgentSpecs(BaseModel):
     name: str = "defaultClient"
     version: str = "v1"
     workspaceRootUri: str | None = None
