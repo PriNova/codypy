@@ -4,9 +4,9 @@ from typing import Any, Dict
 
 from dotenv import load_dotenv
 
-from cody_agent_py.client_info import AgentSpecs
+from cody_agent_py.client_info import AgentSpecs, Models
 from cody_agent_py.cody_agent_py import CodyAgent, CodyServer
-from cody_agent_py.config import get_debug_map
+from cody_agent_py.config import GREEN, RESET, YELLOW, get_debug_map
 
 load_dotenv()
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
@@ -16,7 +16,7 @@ async def main():
 
     debug_method_map: Dict[str, Any] = await get_debug_map()
 
-    print("--- Create Server Connection ---")
+    print(f"{YELLOW}--- Create Server Connection ---{RESET}")
     cody_server: CodyServer = await CodyServer.init(
         binary_path="/home/prinova/CodeProjects/cody/agent/dist", is_debugging=True
     )
@@ -30,40 +30,42 @@ async def main():
         },
     )
 
-    print("--- Initialize Agent ---")
+    print(f"{YELLOW}--- Initialize Agent ---{RESET}")
     cody_agent: CodyAgent = await cody_server.initialize_agent(
         agent_specs=agent_specs, debug_method_map=debug_method_map, is_debugging=True
     )
 
-    print("--- Retrieve Chat Models ---\n")
+    print(f"{YELLOW}--- Retrieve Chat Models ---{RESET}")
     models = await cody_agent.get_models(
         model_type="chat", debug_method_map=debug_method_map, is_debugging=True
     )
     print(models)
 
-    print("--- Create new chat ---")
+    print(f"{YELLOW}--- Create new chat ---{RESET}")
     await cody_agent.new_chat(debug_method_map=debug_method_map, is_debugging=True)
 
-    print("--- Set Model ---")
+    print(f"{YELLOW}--- Set Model ---{RESET}")
     await cody_agent.set_model(
-        model="openai/gpt-4-turbo-preview",
+        model=Models.Claude3Haiku,
         debug_method_map=debug_method_map,
         is_debugging=True,
     )
 
-    print("--- Send message (short) ---")
+    print(f"{YELLOW}--- Send message (short) ---{RESET}")
     # set this to False otherwise your terminal will be full of streaming messages
     debug_method_map["webview/postMessage"] = False
 
     # Wait for input from user in the CLI terminal
     while True:
-        message: str = input("Human: ")
+        message: str = input(f"{GREEN}Human:{RESET} ")
         response = await cody_agent.chat(
             message=message,
             enhanced_context=False,
             debug_method_map=debug_method_map,
             is_debugging=False,
         )
+        if response == "":
+            break
         print(response)
 
     debug_method_map["webview/postMessage"] = True

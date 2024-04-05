@@ -4,9 +4,9 @@ import sys
 from asyncio.subprocess import Process
 from typing import Any, Self, Tuple
 
-from cody_agent_py.client_info import AgentSpecs
+from cody_agent_py.client_info import AgentSpecs, Models
 
-from .config import Configs
+from .config import BLUE, RED, RESET, YELLOW, Configs
 from .messaging import _send_jsonrpc_request, _show_last_message, request_response
 from .server_info import CodyAgentSpecs
 
@@ -31,7 +31,7 @@ class CodyServer:
     async def _create_server_connection(self):
         if self.binary_path == "":
             print(
-                "You need to specify the BINARY_PATH to an absolute path to the agent binary or to the index.js file. Exiting..."
+                f"{RED}You need to specify the BINARY_PATH to an absolute path to the agent binary or to the index.js file. Exiting...{RESET}"
             )
             sys.exit(1)
 
@@ -50,12 +50,12 @@ class CodyServer:
         self._writer = self._process.stdin
 
         if not self.use_tcp:
-            print("--- stdio connection ---")
+            print(f"{YELLOW}--- stdio connection ---{RESET}")
             self._reader = self._process.stdout
             self._writer = self._process.stdin
 
         else:
-            print("--- TCP connection ---")
+            print(f"{YELLOW}--- TCP connection ---{RESET}")
             retry: int = 0
             while retry < 10:
                 try:
@@ -63,14 +63,14 @@ class CodyServer:
                         "localhost", 3113
                     )
                     if self._reader is not None and self._writer is not None:
-                        print(f"Connected to server: localhost:3113\n")
+                        print(f"{YELLOW}Connected to server: localhost:3113{RESET}\n")
                         break
 
                     # return reader, writer, process
                 except ConnectionRefusedError:
                     await asyncio.sleep(0.1)  # Retry after a short delay
                     retry += 1
-            print("Could not connect to server. Exiting...")
+            print(f"{RED}Could not connect to server. Exiting...{RESET}")
             sys.exit(1)
 
     async def initialize_agent(
@@ -84,9 +84,9 @@ class CodyServer:
             if is_debugging:
                 print(f"Agent Info: {cody_agent_specs}\n")
             if cody_agent_specs.authenticated:
-                print("--- Server is authenticated ---")
+                print(f"{YELLOW}--- Server is authenticated ---{RESET}")
             else:
-                print("--- Server is not authenticated ---")
+                print(f"{RED}--- Server is not authenticated ---{RESET}")
                 await self.cleanup_server(self)
                 return None
             return await CodyAgent.init(self)
@@ -149,14 +149,14 @@ class CodyAgent:
         )
 
     async def set_model(
-        self, model: str, debug_method_map, is_debugging: bool = False
+        self, model: Models, debug_method_map, is_debugging: bool = False
     ) -> Any:
         async def callback(result):
             return result
 
         command = {
             "id": f"{self.chat_id}",
-            "message": {"command": "chatModel", "model": f"{model}"},
+            "message": {"command": "chatModel", "model": f"{model.value.model_id}"},
         }
 
         return await request_response(
@@ -178,7 +178,6 @@ class CodyAgent:
     ) -> str:
 
         if message == "/quit":
-            await self._cody_server.cleanup_server()
             return ""
 
         chat_message_request = {
@@ -204,11 +203,11 @@ class CodyAgent:
             callback,
         )
         if speaker == "" or response == "":
-                print("--- Failed to submit chat message ---")
-                await self._cody_server.cleanup_server()
-                return None
-        
-        output = f"{speaker.capitalize()}: {response}\n"
+            print(f"{RED}--- Failed to submit chat message ---{RESET}")
+            await self._cody_server.cleanup_server()
+            return None
+
+        output = f"{BLUE}{speaker.capitalize()}{RESET}: {response}\n"
         return output
 
 

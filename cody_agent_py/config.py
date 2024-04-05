@@ -1,5 +1,17 @@
 from dataclasses import dataclass
 
+RESET = "\033[0m"
+
+# Foreground color codes
+BLACK = "\033[30m"
+RED = "\033[31m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+BLUE = "\033[34m"
+MAGENTA = "\033[35m"
+CYAN = "\033[36m"
+WHITE = "\033[37m"
+
 
 @dataclass
 class Configs:
@@ -28,6 +40,7 @@ debug_method_map = {
     "debug/message": True,
     "webview/postMessage": True,
 }
+
 
 async def get_debug_map():
     return debug_method_map

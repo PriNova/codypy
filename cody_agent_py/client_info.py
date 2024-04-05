@@ -1,4 +1,6 @@
-from typing import Literal, Dict, Any
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, Literal
 
 from pydantic import BaseModel
 
@@ -66,3 +68,50 @@ class AgentSpecs(BaseModel):
         self.name = name
         self.version = version
         self.workspaceRootPath = workspaceRootUri
+
+
+@dataclass
+class ModelSpec:
+    model_name: str = ""
+    model_id: str = ""
+    temperature: float = 0.0
+    maxTokensToSample: int = 512
+
+
+class Models(Enum):
+    Claude2 = ModelSpec(
+        model_name="Claude 2.0",
+        model_id="anthropic/claude-2.0",
+    )
+    Claude21 = ModelSpec(
+        model_name="Claude 2.1",
+        model_id="anthropic/claude-2.1",
+    )
+    Claude2Instant = ModelSpec(
+        model_name="Claude 2.1 Instant",
+        model_id="anthropic/claude-instant-1.2",
+    )
+    Claude3Haiku = ModelSpec(
+        model_name="Claude 3 Haiku",
+        model_id="anthropic/claude-3-haiku-20240307",
+    )
+    Claude3Sonnet = ModelSpec(
+        model_name="Claude 3 Sonnet",
+        model_id="anthropic/claude-3-sonnet-20240229",
+    )
+    Claude3Opus = ModelSpec(
+        model_name="Claude 3 Opus",
+        model_id="anthropic/claude-3-opus-20240229",
+    )
+    GPT35Turbo = ModelSpec(
+        model_name="GPT-3.5 Turbo",
+        model_id="openai/gpt-3.5-turbo",
+    )
+    GPT4TurboPreview = ModelSpec(
+        model_name="GPT-4 Turbo",
+        model_id="openai/gpt-4-turbo-preview",
+    )
+    Mixtral8x7bInstruct = ModelSpec(
+        model_name="Mixtral 8x7b Instruct",
+        model_id="fireworks/accounts/fireworks/models/mixtral-8x7b-instruct",
+    )

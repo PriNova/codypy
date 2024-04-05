@@ -125,7 +125,7 @@ async def request_response(
 ) -> Any:
     await _send_jsonrpc_request(writer, method_name, params)
     async for response in _handle_server_respones(reader):
-        
+
         if is_debugging and await _hasMethod(response):
             method_name = response["method"]
             if method_name in debug_method_map and debug_method_map[method_name]:
