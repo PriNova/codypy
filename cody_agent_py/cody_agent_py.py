@@ -2,10 +2,9 @@ import asyncio
 import os
 import sys
 from asyncio.subprocess import Process
-from typing import Any, Literal, Self, Tuple
+from typing import Any, Self, Tuple
 
 from cody_agent_py.client_info import AgentSpecs
-from cody_agent_py.messaging import request_response
 
 from .config import Configs
 from .messaging import _send_jsonrpc_request, _show_last_message, request_response
@@ -111,7 +110,7 @@ class CodyServer:
 
 class CodyAgent:
     def __init__(self, cody_client: CodyServer) -> None:
-        self._cody_client = cody_client
+        self._cody_server = cody_client
         self.chat_id: str | None = None
 
     async def init(cody_client: CodyServer):
@@ -126,8 +125,8 @@ class CodyAgent:
             "chat/new",
             None,
             debug_method_map,
-            self._cody_client._reader,
-            self._cody_client._writer,
+            self._cody_server._reader,
+            self._cody_server._writer,
             is_debugging,
             callback,
         )
@@ -143,8 +142,8 @@ class CodyAgent:
             "chat/models",
             model,
             debug_method_map,
-            self._cody_client._reader,
-            self._cody_client._writer,
+            self._cody_server._reader,
+            self._cody_server._writer,
             is_debugging,
             callback,
         )
@@ -164,8 +163,8 @@ class CodyAgent:
             "webview/receiveMessage",
             command,
             debug_method_map,
-            self._cody_client._reader,
-            self._cody_client._writer,
+            self._cody_server._reader,
+            self._cody_server._writer,
             is_debugging,
             callback,
         )
@@ -176,11 +175,11 @@ class CodyAgent:
         enhanced_context: bool,
         debug_method_map,
         is_debugging: bool = False,
-    ) -> Tuple[str, str]:
+    ) -> str:
 
         if message == "/quit":
-            await self._cody_client.cleanup_server()
-            sys.exit(0)
+            await self._cody_server.cleanup_server()
+            return ""
 
         chat_message_request = {
             "id": f"{self.chat_id}",
@@ -195,15 +194,22 @@ class CodyAgent:
         async def callback(result) -> Tuple[str, str]:
             return await _show_last_message(result, is_debugging)
 
-        return await request_response(
+        (speaker, response) = await request_response(
             "chat/submitMessage",
             chat_message_request,
             debug_method_map,
-            self._cody_client._reader,
-            self._cody_client._writer,
+            self._cody_server._reader,
+            self._cody_server._writer,
             is_debugging,
             callback,
         )
+        if speaker == "" or response == "":
+                print("--- Failed to submit chat message ---")
+                await self._cody_server.cleanup_server()
+                return None
+        
+        output = f"{speaker.capitalize()}: {response}\n"
+        return output
 
 
 async def get_remote_repositories(

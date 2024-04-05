@@ -56,21 +56,15 @@ async def main():
     debug_method_map["webview/postMessage"] = False
 
     # Wait for input from user in the CLI terminal
-    message: str = input("Human: ")
-    (speaker, message) = await cody_agent.chat(
-        message=message,
-        enhanced_context=False,
-        debug_method_map=debug_method_map,
-        is_debugging=False,
-    )
-
-    if speaker == "" or message == "":
-        print("--- Failed to submit chat message ---")
-        await cody_server.cleanup_server()
-        return None
-
-    output = f"{speaker.capitalize()}: {message}\n"
-    print(output)
+    while True:
+        message: str = input("Human: ")
+        response = await cody_agent.chat(
+            message=message,
+            enhanced_context=False,
+            debug_method_map=debug_method_map,
+            is_debugging=False,
+        )
+        print(response)
 
     debug_method_map["webview/postMessage"] = True
 
