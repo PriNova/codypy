@@ -6,7 +6,7 @@ with open('requirements.txt') as f:
 
 setup(
     name="CodyAgentPy",
-    version="0.1.0",
+    version="0.1.1",
     description="A Python wrapper binding to Cody Agent through establishing a connection to the Cody-Agent server from Sourcegraph Cody using JSON-RPC protocol over a TCP/stdio connection.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

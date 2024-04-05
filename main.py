@@ -5,7 +5,7 @@ from typing import Any, Dict
 from dotenv import load_dotenv
 
 from cody_agent_py.client_info import AgentSpecs
-from cody_agent_py.cody_agent_py import CodyAgent, CodyClient
+from cody_agent_py.cody_agent_py import CodyAgent, CodyServer
 from cody_agent_py.config import get_debug_map
 
 load_dotenv()
@@ -17,7 +17,7 @@ async def main():
     debug_method_map: Dict[str, Any] = await get_debug_map()
 
     print("--- Create Server Connection ---")
-    cody_client: CodyClient = await CodyClient.init(
+    cody_server: CodyServer = await CodyServer.init(
         binary_path="/home/prinova/CodeProjects/cody/agent/dist", is_debugging=True
     )
 
@@ -31,7 +31,7 @@ async def main():
     )
 
     print("--- Initialize Agent ---")
-    cody_agent: CodyAgent = await cody_client.set_agent_specs(
+    cody_agent: CodyAgent = await cody_server.initialize_agent(
         agent_specs=agent_specs, debug_method_map=debug_method_map, is_debugging=True
     )
 
@@ -57,7 +57,7 @@ async def main():
 
     # Wait for input from user in the CLI terminal
     message: str = input("Human: ")
-    (speaker, message) = await cody_agent.submit_chat_message(
+    (speaker, message) = await cody_agent.chat(
         message=message,
         enhanced_context=False,
         debug_method_map=debug_method_map,
@@ -66,7 +66,7 @@ async def main():
 
     if speaker == "" or message == "":
         print("--- Failed to submit chat message ---")
-        await cody_client.cleanup_server_connection()
+        await cody_server.cleanup_server()
         return None
 
     output = f"{speaker.capitalize()}: {message}\n"
@@ -74,7 +74,7 @@ async def main():
 
     debug_method_map["webview/postMessage"] = True
 
-    await cody_client.cleanup_server_connection()
+    await cody_server.cleanup_server()
     return None
 
 

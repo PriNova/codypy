@@ -12,12 +12,12 @@ from .messaging import _send_jsonrpc_request, _show_last_message, request_respon
 from .server_info import CodyAgentSpecs
 
 
-class CodyClient:
+class CodyServer:
 
     async def init(
         binary_path: str, use_tcp: bool = False, is_debugging: bool = False
     ) -> Self:
-        cody_agent = CodyClient(binary_path, use_tcp, is_debugging)
+        cody_agent = CodyServer(binary_path, use_tcp, is_debugging)
         await cody_agent._create_server_connection()
         return cody_agent
 
@@ -74,7 +74,7 @@ class CodyClient:
             print("Could not connect to server. Exiting...")
             sys.exit(1)
 
-    async def set_agent_specs(
+    async def initialize_agent(
         self,
         agent_specs: AgentSpecs,
         debug_method_map,
@@ -88,7 +88,7 @@ class CodyClient:
                 print("--- Server is authenticated ---")
             else:
                 print("--- Server is not authenticated ---")
-                await self.cleanup_server_connection(self)
+                await self.cleanup_server(self)
                 return None
             return await CodyAgent.init(self)
 
@@ -102,7 +102,7 @@ class CodyClient:
             callback,
         )
 
-    async def cleanup_server_connection(self):
+    async def cleanup_server(self):
         await _send_jsonrpc_request(self._writer, "shutdown", None)
         if self._process.returncode is None:
             self._process.terminate()
@@ -110,13 +110,13 @@ class CodyClient:
 
 
 class CodyAgent:
-    def __init__(self, cody_client: CodyClient) -> None:
+    def __init__(self, cody_client: CodyServer) -> None:
         self._cody_client = cody_client
         self.chat_id: str | None = None
-        
-    async def init(cody_client: CodyClient):
+
+    async def init(cody_client: CodyServer):
         return CodyAgent(cody_client)
-    
+
     async def new_chat(self, debug_method_map, is_debugging: bool = False):
         async def callback(result):
             self.chat_id = result
@@ -170,18 +170,18 @@ class CodyAgent:
             callback,
         )
 
-    async def submit_chat_message(
+    async def chat(
         self,
         message,
         enhanced_context: bool,
         debug_method_map,
         is_debugging: bool = False,
     ) -> Tuple[str, str]:
-        
+
         if message == "/quit":
-            await self._cody_client.cleanup_server_connection()
+            await self._cody_client.cleanup_server()
             sys.exit(0)
-            
+
         chat_message_request = {
             "id": f"{self.chat_id}",
             "message": {
