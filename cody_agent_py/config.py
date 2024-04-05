@@ -27,6 +27,12 @@ configs = Configs()
 
 
 async def get_configs() -> Configs:
+    """
+    Returns the global configuration object.
+
+    Returns:
+        Configs: The global configuration object.
+    """
     return configs
 
 
@@ -43,4 +49,10 @@ debug_method_map = {
 
 
 async def get_debug_map():
+    """
+    Returns the debug_method_map dictionary, which controls the debugging behavior of the application.
+
+    The debug_method_map dictionary maps response method names to boolean values that control
+    whether the corresponding debugging behavior is enabled or not.
+    """
     return debug_method_map

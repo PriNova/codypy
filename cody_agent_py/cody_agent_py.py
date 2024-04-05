@@ -2,11 +2,11 @@ import asyncio
 import os
 import sys
 from asyncio.subprocess import Process
-from typing import Any, Self, Tuple
+from typing import Any, Literal, Self, Tuple
 
 from cody_agent_py.client_info import AgentSpecs, Models
 
-from .config import BLUE, RED, RESET, YELLOW, Configs
+from .config import BLUE, RED, RESET, YELLOW, Configs, debug_method_map
 from .messaging import _send_jsonrpc_request, _show_last_message, request_response
 from .server_info import CodyAgentSpecs
 
@@ -29,6 +29,15 @@ class CodyServer:
         self._writer: asyncio.StreamWriter | None = None
 
     async def _create_server_connection(self):
+        """
+        Asynchronously creates a connection to the Cody server.
+        If `binary_path` is an empty string, it prints an error message and exits the program.
+        Sets the `CODY_AGENT_DEBUG_REMOTE` and `CODY_DEBUG` environment variables based on the `use_tcp` and `is_debugging` flags, respectively.
+        Creates a subprocess to run the Cody agent, either by executing the `bin/agent` binary or running the `index.js` file specified by `binary_path`.
+        Depending on the `use_tcp` flag, it either connects to the agent using stdio or opens a TCP connection to `localhost:3113`.
+        If the TCP connection fails after 5 retries, it prints an error message and exits the program.
+        Returns the reader and writer streams for the agent connection.
+        """
         if self.binary_path == "":
             print(
                 f"{RED}You need to specify the BINARY_PATH to an absolute path to the agent binary or to the index.js file. Exiting...{RESET}"
@@ -57,7 +66,8 @@ class CodyServer:
         else:
             print(f"{YELLOW}--- TCP connection ---{RESET}")
             retry: int = 0
-            while retry < 10:
+            retry_attempts: int = 5
+            while retry < retry_attempts:
                 try:
                     (self._reader, self._writer) = await asyncio.open_connection(
                         "localhost", 3113
@@ -79,6 +89,17 @@ class CodyServer:
         debug_method_map,
         is_debugging: bool = False,
     ) -> CodyAgentSpecs | None:
+        """
+        Initializes the Cody agent by sending an "initialize" request to the agent and handling the response.
+        The method takes in agent specifications, a debug method map, and a boolean flag indicating whether debugging is enabled.
+        It returns the initialized CodyAgentSpecs or None if the server is not authenticated.
+        The method first creates a callback function that validates the response from the "initialize" request,
+        prints the agent information if debugging is enabled, and checks if the server is authenticated.
+        If the server is not authenticated, the method calls cleanup_server and returns None.
+        Finally, the method calls request_response to send the "initialize" request with the agent specifications,
+        the debug method map, the reader and writer streams, the debugging flag, and the callback function.
+        """
+
         async def callback(result):
             cody_agent_specs: CodyAgentSpecs = CodyAgentSpecs.model_validate(result)
             if is_debugging:
@@ -102,6 +123,9 @@ class CodyServer:
         )
 
     async def cleanup_server(self):
+        """
+        Cleans up the server connection by sending a "shutdown" request to the server and terminating the server process if it is still running.
+        """
         await _send_jsonrpc_request(self._writer, "shutdown", None)
         if self._process.returncode is None:
             self._process.terminate()
@@ -116,10 +140,19 @@ class CodyAgent:
     async def init(cody_client: CodyServer):
         return CodyAgent(cody_client)
 
-    async def new_chat(self, debug_method_map, is_debugging: bool = False):
+    async def new_chat(
+        self, debug_method_map=debug_method_map, is_debugging: bool = False
+    ):
+        """
+        Initiates a new chat session with the Cody agent server.
+
+        Args:
+            debug_method_map (dict, optional): A mapping of debug methods to be used during the chat session.
+            is_debugging (bool, optional): A flag indicating whether debugging is enabled. Defaults to False.
+        """
+
         async def callback(result):
             self.chat_id = result
-            return result
 
         await request_response(
             "chat/new",
@@ -132,8 +165,23 @@ class CodyAgent:
         )
 
     async def get_models(
-        self, model_type: str, debug_method_map, is_debugging: bool = False
+        self,
+        model_type: Literal["chat", "edit"],
+        debug_method_map=debug_method_map,
+        is_debugging: bool = False,
     ) -> Any:
+        """
+        Retrieves the available models for the specified model type (either "chat" or "edit") from the Cody agent server.
+
+        Args:
+            model_type (Literal["chat", "edit"]): The type of model to retrieve.
+            debug_method_map (dict, optional): A mapping of debug methods to be used during the request. Defaults to `debug_method_map`.
+            is_debugging (bool, optional): A flag indicating whether debugging is enabled. Defaults to False.
+
+        Returns:
+            Any: The result of the "chat/models" request.
+        """
+
         async def callback(result):
             return result
 
@@ -149,8 +197,23 @@ class CodyAgent:
         )
 
     async def set_model(
-        self, model: Models, debug_method_map, is_debugging: bool = False
+        self,
+        model: Models = Models.Claude3Sonnet,
+        debug_method_map=debug_method_map,
+        is_debugging: bool = False,
     ) -> Any:
+        """
+        Sets the model to be used for the chat session.
+
+        Args:
+            model (Models): The model to be used for the chat session. Defaults to Models.Claude3Sonnet.
+            debug_method_map (dict, optional): A mapping of debug methods to be used during the request.
+            is_debugging (bool, optional): A flag indicating whether debugging is enabled. Defaults to False.
+
+        Returns:
+            Any: The result of the "webview/receiveMessage" request.
+        """
+
         async def callback(result):
             return result
 
@@ -172,10 +235,22 @@ class CodyAgent:
     async def chat(
         self,
         message,
-        enhanced_context: bool,
-        debug_method_map,
+        enhanced_context: bool = True,
+        debug_method_map=debug_method_map,
         is_debugging: bool = False,
     ) -> str:
+        """
+        Sends a chat message to the Cody server and returns the response.
+
+        Args:
+            message (str): The message to be sent to the Cody server.
+            enhanced_context (bool, optional): Whether to include enhanced context in the chat message request. Defaults to True.
+            debug_method_map (dict, optional): A mapping of debug methods to be used during the request.
+            is_debugging (bool, optional): A flag indicating whether debugging is enabled. Defaults to False.
+
+        Returns:
+            str: The response from the Cody server, formatted as a string with the speaker and response.
+        """
 
         if message == "/quit":
             return ""
