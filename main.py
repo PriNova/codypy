@@ -9,7 +9,7 @@ from cody_agent_py.cody_agent_py import CodyAgent, CodyServer
 from cody_agent_py.config import GREEN, RESET, YELLOW, get_debug_map
 
 load_dotenv()
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+SG_ACCESS_TOKEN = os.getenv("SG_ACCESS_TOKEN")
 
 
 async def main():
@@ -26,7 +26,7 @@ async def main():
     agent_specs = AgentSpecs(
         workspaceRootUri="/home/prinova/CodeProjects/CodyAgentPy",
         extensionConfiguration={
-            "accessToken": ACCESS_TOKEN,
+            "accessToken": SG_ACCESS_TOKEN,
             "codebase": "https://github.com/PriNova/CodyAgentPy",  # github.com/sourcegraph/cody",
             "customConfiguration": {},
         },
