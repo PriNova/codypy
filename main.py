@@ -4,9 +4,9 @@ from typing import Any, Dict
 
 from dotenv import load_dotenv
 
-from cody_agent_py.client_info import AgentSpecs, Models
-from cody_agent_py.cody_agent_py import CodyAgent, CodyServer
-from cody_agent_py.config import GREEN, RESET, YELLOW, get_debug_map
+from codypy.client_info import AgentSpecs, Models
+from codypy.cody_py import CodyAgent, CodyServer
+from codypy.config import GREEN, RESET, YELLOW, get_debug_map
 
 load_dotenv()
 SG_ACCESS_TOKEN = os.getenv("SG_ACCESS_TOKEN")

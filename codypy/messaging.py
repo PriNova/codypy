@@ -4,7 +4,7 @@ from typing import Any, AsyncGenerator, Dict, Tuple
 
 import pydantic_core as pd
 
-from cody_agent_py.config import Configs
+from codypy.config import Configs
 
 message_id = 1
 

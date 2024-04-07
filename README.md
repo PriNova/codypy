@@ -1,8 +1,8 @@
-# CodyAgentPy 🐍🤖
+# codypy 🐍🤖
 
 **This is a WIP (work-in-progress) project** 🚧👷‍♂️
 
-CodyAgentPy is a Python wrapper binding to Cody Agent through establishing a connection to the Cody-Agent server from [Sourcegraph Cody](https://github.com/sourcegraph/cody) using JSON-RPC (Remote Procedure Call) protocol over a TCP/stdio connection. It allows sending and receiving JSON-RPC messages asynchronously. 📨📥
+`codypy` is a Python wrapper binding to Cody Agent through establishing a connection to the Cody-Agent server from [Sourcegraph Cody](https://github.com/sourcegraph/cody) using JSON-RPC (Remote Procedure Call) protocol over a TCP/stdio connection. It allows sending and receiving JSON-RPC messages asynchronously. 📨📥
 
 **Note 1: You need to register an account at [Sourcegraph](https://sourcegraph.com/) and create an API key.**
 
@@ -29,12 +29,12 @@ CodyAgentPy is a Python wrapper binding to Cody Agent through establishing a con
 
 1. Clone the repository:
    ```
-   git clone https://github.com/PriNova/CodyAgentPy.git
+   git clone https://github.com/PriNova/codypy.git
    ```
 
 1. Navigate to the project directory:
    ```
-   cd CodyAgentPy
+   cd codypy
    ```
 
 1. Ensure you have Python 3.7 or higher installed:
@@ -60,7 +60,7 @@ CodyAgentPy is a Python wrapper binding to Cody Agent through establishing a con
    mv env.example .env
    ```
 
-1. Run the script using `python CodyAgentPy.py`.
+1. Run the script using `python main.py`.
 
 **Note**: Currently you need to set the path to the agent binary or the built script in the sourcegraph/cody/agent repository
 
@@ -83,7 +83,7 @@ You are now ready to use CodyAgentPy!
 
 ## Example
 
-For an example of initializing and chatting, look at [main.py](https://github.com/PriNova/CodyAgentPy/blob/main/main.py) file
+For an example of initializing and chatting, look at [main.py](https://github.com/PriNova/codypy/blob/main/main.py) file
 
 This example demonstrates how to use a complete cycle to establish a connection to the server and process JSON-RPC messages.
 
@@ -93,8 +93,8 @@ This example demonstrates how to use a complete cycle to establish a connection 
 - [x] Enhance the initialization message in `initializing_message()` function to include additional client information.
 - [x] Implement reliable logging functionality to track client-server communication.
 - [ ] Add configuration options for server address, port, and other settings.
-- [ ] Develop unit tests for key functions in `CodyAgentPy.py`.
-- [x] Create documentation and examples for using the `CodyAgentPy` client library.
+- [ ] Develop unit tests for key functions in `codypy`.
+- [x] Create documentation and examples for using the `codypy` client library.
 - [ ] Implement support for including additional context about files and folders.
 
 

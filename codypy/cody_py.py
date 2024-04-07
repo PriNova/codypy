@@ -4,7 +4,7 @@ import sys
 from asyncio.subprocess import Process
 from typing import Any, Literal, Self, Tuple
 
-from cody_agent_py.client_info import AgentSpecs, Models
+from codypy.client_info import AgentSpecs, Models
 
 from .config import BLUE, RED, RESET, YELLOW, Configs, debug_method_map
 from .messaging import _send_jsonrpc_request, _show_last_message, request_response
