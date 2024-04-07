@@ -48,7 +48,7 @@ class CodyServer:
         os.environ["CODY_DEBUG"] = str(self.is_debugging).lower()
 
         self._process: Process = await asyncio.create_subprocess_exec(
-            "bin/agent" if self.binary_path else "node",
+            "bin/cody-agent" if self.binary_path else "node",
             "jsonrpc" if self.binary_path else f"{self.binary_path}/index.js",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,

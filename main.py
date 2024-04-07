@@ -24,10 +24,10 @@ async def main():
 
     # Create an AgentSpecs instance with the specified workspace root URI and extension configuration.
     agent_specs = AgentSpecs(
-        workspaceRootUri="/home/prinova/CodeProjects/CodyAgentPy",
+        workspaceRootUri="/home/prinova/CodeProjects/codypy",
         extensionConfiguration={
             "accessToken": SG_ACCESS_TOKEN,
-            "codebase": "https://github.com/PriNova/CodyAgentPy",  # github.com/sourcegraph/cody",
+            "codebase": "",  # github.com/sourcegraph/cody",
             "customConfiguration": {},
         },
     )
