@@ -9,7 +9,7 @@ from codypy.cody_py import CodyAgent, CodyServer
 from codypy.config import GREEN, RESET, YELLOW, get_debug_map
 
 load_dotenv()
-SG_ACCESS_TOKEN = os.getenv("SG_ACCESS_TOKEN")
+SG_ACCESS_TOKEN = os.getenv("SRC_ACCESS_TOKEN")
 
 
 async def main():

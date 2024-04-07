@@ -8,7 +8,7 @@ from codypy.cody_py import CodyAgent, CodyServer
 from codypy.config import get_debug_map
 
 
-async def main():
+async def async_main():
     parser = argparse.ArgumentParser(description="Cody Agent Python CLI")
     parser.add_argument(
             "chat", help="Initialize the chat conversation"
@@ -34,6 +34,7 @@ async def main():
     )
     parser.add_argument(
         "-m",
+        "--message",
         type=str,
         required=True,
         help="The chat message to send.",
@@ -65,7 +66,7 @@ async def chat(args):
     
     debug_method_map["webview/postMessage"] = False
     response = await cody_agent.chat(
-            message=args.m,
+            message=args.message,
             enhanced_context=True,
             debug_method_map=debug_method_map,
             is_debugging=False,
@@ -79,5 +80,8 @@ async def chat(args):
     await cody_server.cleanup_server()
     return None
 
+def main():
+    asyncio.run(async_main())
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

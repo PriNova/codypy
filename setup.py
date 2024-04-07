@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 # Read the contents of requirements.txt
 with open('requirements.txt') as f:
@@ -14,6 +14,11 @@ setup(
     author_email="info@prinova.de",
     url="https://github.com/PriNova/CodyAgentPy",
     packages=find_packages(),
+    entry_points={
+        'console_scripts': [
+            'codypy-cli = cli:main',
+        ],
+    },
     install_requires=requirements,
     classifiers=[
         "Development Status :: 3 - Alpha",
