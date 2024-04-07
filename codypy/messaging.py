@@ -256,5 +256,7 @@ async def request_response(
                 print(f"Result: \n\n{response}\n")
             if callback:
                 return await callback(response["result"])
+            else:
+                return response["result"]
 
     return None

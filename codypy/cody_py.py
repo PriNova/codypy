@@ -59,12 +59,14 @@ class CodyServer:
         self._writer = self._process.stdin
 
         if not self.use_tcp:
-            print(f"{YELLOW}--- stdio connection ---{RESET}")
+            if self.is_debugging:
+                print(f"{YELLOW}--- stdio connection ---{RESET}")
             self._reader = self._process.stdout
             self._writer = self._process.stdin
 
         else:
-            print(f"{YELLOW}--- TCP connection ---{RESET}")
+            if self.is_debugging:
+                print(f"{YELLOW}--- TCP connection ---{RESET}")
             retry: int = 0
             retry_attempts: int = 5
             while retry < retry_attempts:
@@ -104,12 +106,12 @@ class CodyServer:
             cody_agent_specs: CodyAgentSpecs = CodyAgentSpecs.model_validate(result)
             if is_debugging:
                 print(f"Agent Info: {cody_agent_specs}\n")
-            if cody_agent_specs.authenticated:
-                print(f"{YELLOW}--- Server is authenticated ---{RESET}")
-            else:
-                print(f"{RED}--- Server is not authenticated ---{RESET}")
-                await self.cleanup_server(self)
-                return None
+                if cody_agent_specs.authenticated:
+                    print(f"{YELLOW}--- Server is authenticated ---{RESET}")
+                else:
+                    print(f"{RED}--- Server is not authenticated ---{RESET}")
+                    await self.cleanup_server(self)
+                    return None
             return await CodyAgent.init(self)
 
         return await request_response(
@@ -265,18 +267,15 @@ class CodyAgent:
             },
         }
 
-        async def callback(result) -> Tuple[str, str]:
-            return await _show_last_message(result, is_debugging)
-
-        (speaker, response) = await request_response(
+        result = await request_response(
             "chat/submitMessage",
             chat_message_request,
             debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
-            is_debugging,
-            callback,
+            is_debugging
         )
+        (speaker, response) = await _show_last_message(result, is_debugging)
         if speaker == "" or response == "":
             print(f"{RED}--- Failed to submit chat message ---{RESET}")
             await self._cody_server.cleanup_server()
@@ -289,19 +288,15 @@ class CodyAgent:
 async def get_remote_repositories(
     reader, writer, id: str, configs: Configs, debug_method_map
 ) -> Any:
-    async def callback(result):
-        return result
 
     return await request_response(
-        "chat/remoteRepos", id, debug_method_map, reader, writer, configs, callback
+        "chat/remoteRepos", id, debug_method_map, reader, writer, configs
     )
 
 
 async def receive_webviewmessage(
     reader, writer, params, configs: Configs, debug_method_map
 ) -> Any:
-    async def callback(result):
-        return result
 
     return await request_response(
         "webview/receiveMessage",
@@ -310,5 +305,4 @@ async def receive_webviewmessage(
         reader,
         writer,
         configs,
-        callback,
     )
