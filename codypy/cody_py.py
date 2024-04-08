@@ -6,9 +6,9 @@ from typing import Any, Literal, Self
 
 from codypy.client_info import AgentSpecs, Models
 from codypy.utils import (
+    _check_for_binary_file,
+    _download_binary_to_path,
     _format_binary_name,
-    check_for_binary_file,
-    download_binary_to_path,
 )
 
 from .config import BLUE, RED, RESET, YELLOW, Configs, debug_method_map
@@ -24,7 +24,7 @@ class CodyServer:
         use_tcp: bool = False,
         is_debugging: bool = False,
     ) -> Self:
-        has_agent_binary = await check_for_binary_file(
+        has_agent_binary = await _check_for_binary_file(
             binary_path, "cody-agent", version
         )
         if not has_agent_binary:
@@ -32,7 +32,7 @@ class CodyServer:
                 f"{YELLOW}WARNING: The Cody Agent binary does not exist at the specified path: {binary_path}{RESET}"
             )
             print(f"{YELLOW}WARNING: Start downloading the Cody Agent binary...{RESET}")
-            is_completed = await download_binary_to_path(
+            is_completed = await _download_binary_to_path(
                 binary_path, "cody-agent", version
             )
             if not is_completed:

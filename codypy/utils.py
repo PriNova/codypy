@@ -67,7 +67,7 @@ async def _has_file(binary_path: str, cody_agent_bin: str) -> bool:
     return os.path.isfile(joined_path_and_file)
 
 
-async def check_for_binary_file(binary_path: str, cody_name: str, version: str) -> bool:
+async def _check_for_binary_file(binary_path: str, cody_name: str, version: str) -> bool:
     """
     Checks if a binary file for the Cody agent exists at the specified path.
 
@@ -102,7 +102,7 @@ async def _format_binary_name(cody_name: str, version: str) -> str:
     )
 
 
-async def download_binary_to_path(
+async def _download_binary_to_path(
     binary_path: str, cody_name: str, version: str
 ) -> bool:
     """
@@ -140,7 +140,7 @@ async def download_binary_to_path(
 
 
 async def main():
-    binary = await check_for_binary_file(
+    binary = await _check_for_binary_file(
         "/home/prinvoa/CodeProjects/CodyAgentPy/bin", "cody-agent", "0.0.5"
     )
     print(binary)

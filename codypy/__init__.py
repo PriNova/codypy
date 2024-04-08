@@ -22,7 +22,6 @@ from .config import (
     get_debug_map,
 )
 from .server_info import AuthStatus, CodyAgentSpecs, CodyLLMSiteConfiguration
-from .utils import check_for_binary_file, download_binary_to_path
 
 __all__ = [
     "CodyAgent",
@@ -31,8 +30,6 @@ __all__ = [
     "get_configs",
     "get_debug_map",
     "debug_method_map",
-    "check_for_binary_file",
-    "download_binary_to_path",
     "ClientCapabilities",
     "AgentSpecs",
     "Models",
