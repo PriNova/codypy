@@ -7,22 +7,22 @@ from .client_info import (
 )
 from .cody_py import CodyAgent, CodyServer
 from .config import (
+    BLACK,
+    BLUE,
+    CYAN,
+    GREEN,
+    MAGENTA,
+    RED,
+    RESET,
+    WHITE,
+    YELLOW,
     Configs,
     debug_method_map,
     get_configs,
     get_debug_map,
-    RESET,
-    BLACK,
-    RED,
-    GREEN,
-    YELLOW,
-    BLUE,
-    MAGENTA,
-    CYAN,
-    WHITE,
 )
-
-from .server_info import CodyAgentSpecs, AuthStatus, CodyLLMSiteConfiguration
+from .server_info import AuthStatus, CodyAgentSpecs, CodyLLMSiteConfiguration
+from .utils import check_for_binary_file, download_binary_to_path
 
 __all__ = [
     "CodyAgent",
@@ -31,6 +31,8 @@ __all__ = [
     "get_configs",
     "get_debug_map",
     "debug_method_map",
+    "check_for_binary_file",
+    "download_binary_to_path",
     "ClientCapabilities",
     "AgentSpecs",
     "Models",

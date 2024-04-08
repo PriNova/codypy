@@ -2,9 +2,14 @@ import asyncio
 import os
 import sys
 from asyncio.subprocess import Process
-from typing import Any, Literal, Self, Tuple
+from typing import Any, Literal, Self
 
 from codypy.client_info import AgentSpecs, Models
+from codypy.utils import (
+    _format_binary_name,
+    check_for_binary_file,
+    download_binary_to_path,
+)
 
 from .config import BLUE, RED, RESET, YELLOW, Configs, debug_method_map
 from .messaging import _send_jsonrpc_request, _show_last_message, request_response
@@ -14,14 +19,35 @@ from .server_info import CodyAgentSpecs
 class CodyServer:
 
     async def init(
-        binary_path: str, use_tcp: bool = False, is_debugging: bool = False
+        binary_path: str,
+        version: str,
+        use_tcp: bool = False,
+        is_debugging: bool = False,
     ) -> Self:
-        cody_agent = CodyServer(binary_path, use_tcp, is_debugging)
+        has_agent_binary = await check_for_binary_file(
+            binary_path, "cody-agent", version
+        )
+        if not has_agent_binary:
+            print(
+                f"{YELLOW}WARNING: The Cody Agent binary does not exist at the specified path: {binary_path}{RESET}"
+            )
+            print(f"{YELLOW}WARNING: Start downloading the Cody Agent binary...{RESET}")
+            is_completed = await download_binary_to_path(
+                binary_path, "cody-agent", version
+            )
+            if not is_completed:
+                print(f"{RED}ERROR: Failed to download the Cody Agent binary.{RESET}")
+                sys.exit(1)
+
+        cody_binary = os.path.join(
+            binary_path, await _format_binary_name("cody-agent", version)
+        )
+        cody_agent = CodyServer(cody_binary, use_tcp, is_debugging)
         await cody_agent._create_server_connection()
         return cody_agent
 
-    def __init__(self, binary_path: str, use_tcp: bool, is_debugging: bool) -> None:
-        self.binary_path = binary_path
+    def __init__(self, cody_binary: str, use_tcp: bool, is_debugging: bool) -> None:
+        self.cody_binary = cody_binary
         self.use_tcp = use_tcp
         self.is_debugging = is_debugging
         self._process: Process | None = None
@@ -38,7 +64,7 @@ class CodyServer:
         If the TCP connection fails after 5 retries, it prints an error message and exits the program.
         Returns the reader and writer streams for the agent connection.
         """
-        if self.binary_path == "":
+        if self.cody_binary == "":
             print(
                 f"{RED}You need to specify the BINARY_PATH to an absolute path to the agent binary or to the index.js file. Exiting...{RESET}"
             )
@@ -48,8 +74,8 @@ class CodyServer:
         os.environ["CODY_DEBUG"] = str(self.is_debugging).lower()
 
         self._process: Process = await asyncio.create_subprocess_exec(
-            "bin/cody-agent" if self.binary_path else "node",
-            "jsonrpc" if self.binary_path else f"{self.binary_path}/index.js",
+            self.cody_binary,
+            "jsonrpc",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             env=os.environ,

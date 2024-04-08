@@ -19,7 +19,7 @@ async def main():
     # Create a CodyServer instance and initialize it with the specified binary path and debugging mode.
     print(f"{YELLOW}--- Create Server Connection ---{RESET}")
     cody_server: CodyServer = await CodyServer.init(
-        binary_path=BINARY_PATH, is_debugging=True
+        binary_path=BINARY_PATH, version="0.0.5", is_debugging=True
     )
 
     # Create an AgentSpecs instance with the specified workspace root URI and extension configuration.
@@ -62,7 +62,7 @@ async def main():
         message: str = input(f"{GREEN}Human:{RESET} ")
         response = await cody_agent.chat(
             message=message,
-            enhanced_context=False,
+            enhanced_context=False,  # Set to 'True' if you wish cody to be codebase aware
             is_debugging=False,
         )
         if response == "":

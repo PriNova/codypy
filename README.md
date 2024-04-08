@@ -23,7 +23,7 @@
 
 - Python 3.7+
 - `asyncio` library
-- The Cody Agent CLI binary at https://github.com/sourcegraph/cody/releases
+- The Cody Agent CLI binary will be downloaded automatically based on the OS and architecture from https://github.com/sourcegraph/cody/releases
 
 ## Installation
 ### Linux
@@ -56,18 +56,12 @@
    pip install -r requirements.txt
    ```
 
-1. Download the binary of the Cody Agent from https://github.com/sourcegraph/cody/releases
-
-
 1. Rename the provided `env.example` file to `.env` and set the `SRC_ACCESS_TOKEN` value to your API key and the path `BINARY_PATH` to the cody agent binary. Use the following command in Linux to rename you file: 
    ```
    mv env.example .env
    ```
 
 1. Run the script using `python main.py`.
-
-**Note**: Currently you need to set the path to the downloaded agent binary.
-
 
 You are now ready to use codypy!
 
@@ -101,6 +95,7 @@ This example demonstrates how to use a complete cycle to establish a connection 
 - [x] Enhance the initialization message in `initializing_message()` function to include additional client information.
 - [x] Implement reliable logging functionality to track client-server communication.
 - [x] Implement CLI tooling.
+- [x] Download the cody agent binary based on OS and arch.
 - [ ] Develop unit tests for key functions in `codypy`.
 - [x] Create documentation and examples for using the `codypy` client library.
 - [ ] Implement support for including additional context about files and folders.
