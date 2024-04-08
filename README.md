@@ -87,7 +87,7 @@ You are now ready to use codypy!
 
 ## Usage as CLI tool
 
-If installed as a package like mentioned above, you can also use codypy as a CLI tool. Simply add `SRC_ACCESS_TOKEN` and `BINARY_PATH` to the correct values and in the terminal execute `codypy-cli --help` to see the available options.
+If installed as a package like mentioned above, you can also use codypy as a CLI tool. Simply export `SRC_ACCESS_TOKEN` and `BINARY_PATH` to your environment and in the terminal execute `codypy-cli --help` to see the available options.
 
 ## Example
 
