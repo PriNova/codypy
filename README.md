@@ -66,7 +66,7 @@
 
 1. Run the script using `python main.py`.
 
-**Note**: Currently you need to set the path to the agent binary or the built script in the sourcegraph/cody/agent repository
+**Note**: Currently you need to set the path to the downloaded agent binary.
 
 
 You are now ready to use codypy!
@@ -75,7 +75,7 @@ You are now ready to use codypy!
 
 ## Usage as a library
 
-1. Set at least the 'BINARY_PATH' property to the downloaded agent binary.
+1. Set at least the 'BINARY_PATH' and 'SRC_ACCESS_TOKEN' property to the downloaded agent binary and API Token respectively.
 1. Set your workspace path in the 'workspaceRootUri' property to your local GitHub repository.
 1. Run the example script using `python main.py`.
 1. The script will attempt to connect to the Cody Agent.
@@ -83,7 +83,7 @@ You are now ready to use codypy!
 1. The script will then receive and process JSON-RPC messages from the server.
 1. It will extract and display the method and result from the received messages if `is_debugging` is set to `True`.
 1. You will be in 'chat' mode, where you can have a conversation with the Cody Agent based on your input and enhanced context about your codebase.
-1. The script will continue to receive messages until you input `/quit`. The server closes the connection.
+1. The script will continue to receive messages until you input `/quit`. The server closes then the connection.
 
 ## Usage as CLI tool
 
