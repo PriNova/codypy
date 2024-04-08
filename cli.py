@@ -1,11 +1,10 @@
 import argparse
 import asyncio
 import os
-from typing import Any, Dict
 
 from codypy.client_info import AgentSpecs
 from codypy.cody_py import CodyAgent, CodyServer
-from codypy.config import get_debug_map
+from codypy.config import debug_method_map
 
 
 async def async_main():
@@ -15,6 +14,7 @@ async def async_main():
         "--binary_path",
         type=str,
         required=True,
+        default=os.getenv("BINARY_PATH"),
         help="The path to the Cody Agent binary. (Required)",
     )
 
@@ -51,7 +51,6 @@ async def async_main():
 
 
 async def chat(args):
-    debug_method_map: Dict[str, Any] = await get_debug_map()
     cody_server: CodyServer = await CodyServer.init(
         binary_path=args.binary_path, is_debugging=False
     )
@@ -65,16 +64,15 @@ async def chat(args):
         },
     )
     cody_agent: CodyAgent = await cody_server.initialize_agent(
-        agent_specs=agent_specs, debug_method_map=debug_method_map, is_debugging=False
+        agent_specs=agent_specs, is_debugging=False
     )
 
-    await cody_agent.new_chat(debug_method_map=debug_method_map, is_debugging=False)
+    await cody_agent.new_chat(is_debugging=False)
 
     debug_method_map["webview/postMessage"] = False
     response = await cody_agent.chat(
         message=args.message,
         enhanced_context=args.c,
-        debug_method_map=debug_method_map,
         is_debugging=False,
     )
     if response == "":

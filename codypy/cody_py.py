@@ -88,7 +88,7 @@ class CodyServer:
     async def initialize_agent(
         self,
         agent_specs: AgentSpecs,
-        debug_method_map,
+        debug_method_map=debug_method_map,
         is_debugging: bool = False,
     ) -> CodyAgentSpecs | None:
         """
@@ -273,7 +273,7 @@ class CodyAgent:
             debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
-            is_debugging
+            is_debugging,
         )
         (speaker, response) = await _show_last_message(result, is_debugging)
         if speaker == "" or response == "":

@@ -23,6 +23,7 @@
 
 - Python 3.7+
 - `asyncio` library
+- The Cody Agent CLI binary at https://github.com/sourcegraph/cody/releases
 
 ## Installation
 ### Linux
@@ -55,7 +56,10 @@
    pip install -r requirements.txt
    ```
 
-1. Rename the provided `env.example` file to `.env` and set the `SG_ACCESS_TOKEN` value to your API key. Use the following command in Linux to rename you file: 
+1. Download the binary of the Cody Agent from https://github.com/sourcegraph/cody/releases
+
+
+1. Rename the provided `env.example` file to `.env` and set the `SRC_ACCESS_TOKEN` value to your API key and the path `BINARY_PATH` to the cody agent binary. Use the following command in Linux to rename you file: 
    ```
    mv env.example .env
    ```
@@ -65,13 +69,13 @@
 **Note**: Currently you need to set the path to the agent binary or the built script in the sourcegraph/cody/agent repository
 
 
+You are now ready to use codypy!
 
-You are now ready to use CodyAgentPy!
+**You can also install the package in dev mode via `pip install -e .`**
 
+## Usage as a library
 
-## Usage
-
-1. Set at least the 'BINARY_PATH' property to the agent binary or the build 'index.js' file.
+1. Set at least the 'BINARY_PATH' property to the downloaded agent binary.
 1. Set your workspace path in the 'workspaceRootUri' property to your local GitHub repository.
 1. Run the example script using `python main.py`.
 1. The script will attempt to connect to the Cody Agent.
@@ -80,6 +84,10 @@ You are now ready to use CodyAgentPy!
 1. It will extract and display the method and result from the received messages if `is_debugging` is set to `True`.
 1. You will be in 'chat' mode, where you can have a conversation with the Cody Agent based on your input and enhanced context about your codebase.
 1. The script will continue to receive messages until you input `/quit`. The server closes the connection.
+
+## Usage as CLI tool
+
+If installed as a package like mentioned above, you can also use codypy as a CLI tool. Simply add `SRC_ACCESS_TOKEN` and `BINARY_PATH` to the correct values and in the terminal execute `codypy-cli --help` to see the available options.
 
 ## Example
 
@@ -92,7 +100,7 @@ This example demonstrates how to use a complete cycle to establish a connection 
 - [x] Improve the parsing and handling of JSON-RPC responses in `receive_jsonrpc_messages()` function.
 - [x] Enhance the initialization message in `initializing_message()` function to include additional client information.
 - [x] Implement reliable logging functionality to track client-server communication.
-- [ ] Add configuration options for server address, port, and other settings.
+- [x] Implement CLI tooling.
 - [ ] Develop unit tests for key functions in `codypy`.
 - [x] Create documentation and examples for using the `codypy` client library.
 - [ ] Implement support for including additional context about files and folders.
