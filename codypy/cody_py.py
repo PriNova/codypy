@@ -136,9 +136,9 @@ class CodyServer:
                     print(f"{YELLOW}--- Server is authenticated ---{RESET}")
                 else:
                     print(f"{RED}--- Server is not authenticated ---{RESET}")
-                    await self.cleanup_server(self)
-                    return None
-            return await CodyAgent.init(self)
+                    await self.cleanup_server()
+                    sys.exit(1)
+            return await CodyAgent.init(Self)
 
         return await request_response(
             "initialize",
@@ -305,7 +305,7 @@ class CodyAgent:
         if speaker == "" or response == "":
             print(f"{RED}--- Failed to submit chat message ---{RESET}")
             await self._cody_server.cleanup_server()
-            return None
+            sys.exit(1)
 
         output = f"{BLUE}{speaker.capitalize()}{RESET}: {response}\n"
         return output
