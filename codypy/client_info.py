@@ -83,12 +83,12 @@ class Models(Enum):
         model_name="Claude 2.0",
         model_id="anthropic/claude-2.0",
     )
-    Claude21 = ModelSpec(
+    Claude2_1 = ModelSpec(
         model_name="Claude 2.1",
         model_id="anthropic/claude-2.1",
     )
-    Claude2Instant = ModelSpec(
-        model_name="Claude 2.1 Instant",
+    Claude1_2Instant = ModelSpec(
+        model_name="Claude 1.2 Instant",
         model_id="anthropic/claude-instant-1.2",
     )
     Claude3Haiku = ModelSpec(
@@ -109,9 +109,13 @@ class Models(Enum):
     )
     GPT4TurboPreview = ModelSpec(
         model_name="GPT-4 Turbo",
-        model_id="openai/gpt-4-turbo-preview",
+        model_id="openai/gpt-4-turbo",
     )
-    Mixtral8x7bInstruct = ModelSpec(
-        model_name="Mixtral 8x7b Instruct",
+    Mixtral8x7b = ModelSpec(
+        model_name="Mixtral 8x7b",
         model_id="fireworks/accounts/fireworks/models/mixtral-8x7b-instruct",
+    )
+    Mixtral8x22b = ModelSpec(
+        model_name="Mixtral 8x22b Preview",
+        model_id="fireworks/accounts/fireworks/models/mixtral-8x22b-instruct-preview",
     )
