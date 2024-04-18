@@ -20,6 +20,7 @@ async def main():
     print(f"{YELLOW}--- Create Server Connection ---{RESET}")
     cody_server: CodyServer = await CodyServer.init(
         binary_path=BINARY_PATH, version="0.0.5b", is_debugging=True
+        binary_path=BINARY_PATH, version="0.0.5b", is_debugging=True
     )
 
     # Create an AgentSpecs instance with the specified workspace root URI and extension configuration.
@@ -40,7 +41,7 @@ async def main():
 
     # Retrieve and print the available chat models
     print(f"{YELLOW}--- Retrieve Chat Models ---{RESET}")
-    models = await cody_agent.get_models(model_type='edit', is_debugging=True)
+    models = await cody_agent.get_models(model_type='chat', is_debugging=True)
     print(models)
 
     # Create a new chat with the CodyAgent
@@ -50,7 +51,7 @@ async def main():
     # Set the chat model to Claude3Haiku
     print(f"{YELLOW}--- Set Model ---{RESET}")
     await cody_agent.set_model(
-        model=Models.Claude3Opus,
+        model=Models.Claude3Sonnet,
         is_debugging=True,
     )
 
