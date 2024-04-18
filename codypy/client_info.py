@@ -45,8 +45,8 @@ class ClientCapabilities(BaseModel):
 
 
 class AgentSpecs(BaseModel):
-    name: str = "defaultClient"
-    version: str = "v1"
+    name: str = "cody-agent"
+    version: str = "0.1.0"
     workspaceRootUri: str | None = None
 
     # @deprecated Use `workspaceRootUri` instead.

@@ -137,14 +137,3 @@ async def _download_binary_to_path(
     except requests.exceptions.ConnectionError as err:
         print(f"Error connecting to server: {err}")
         return False
-
-
-async def main():
-    binary = await _check_for_binary_file(
-        "/home/prinvoa/CodeProjects/CodyAgentPy/bin", "cody-agent", "0.0.5"
-    )
-    print(binary)
-
-
-# Usage
-asyncio.run(main=main())

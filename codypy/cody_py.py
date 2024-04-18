@@ -108,8 +108,9 @@ class CodyServer:
                 except ConnectionRefusedError:
                     await asyncio.sleep(0.1)  # Retry after a short delay
                     retry += 1
-            print(f"{RED}Could not connect to server. Exiting...{RESET}")
-            sys.exit(1)
+            if (retry == retry_attempts):
+                print(f"{RED}Could not connect to server. Exiting...{RESET}")
+                sys.exit(1)
 
     async def initialize_agent(
         self,
@@ -138,7 +139,7 @@ class CodyServer:
                     print(f"{RED}--- Server is not authenticated ---{RESET}")
                     await self.cleanup_server()
                     sys.exit(1)
-            return await CodyAgent.init(Self)
+            return await CodyAgent.init(self)
 
         return await request_response(
             "initialize",
@@ -194,7 +195,7 @@ class CodyAgent:
 
     async def get_models(
         self,
-        model_type: Literal["chat", "edit"],
+        model_type: str,
         debug_method_map=debug_method_map,
         is_debugging: bool = False,
     ) -> Any:

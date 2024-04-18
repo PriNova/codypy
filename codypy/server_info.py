@@ -32,6 +32,6 @@ class AuthStatus(BaseModel):
 class CodyAgentSpecs(BaseModel):
     name: str
     authenticated: bool | None = None
-    cody_enabled: bool | None = None
-    cody_version: str | None = None
+    codyEnabled: bool | None = None
+    codyVersion: str | None = None
     authStatus: AuthStatus | None = None
