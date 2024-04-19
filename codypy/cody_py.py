@@ -21,29 +21,34 @@ class CodyServer:
     async def init(
         binary_path: str,
         version: str,
-        use_tcp: bool = False,
+        use_tcp: bool = True,        # default because of ca-certificate verification
         is_debugging: bool = False,
+        
     ) -> Self:
-        has_agent_binary = await _check_for_binary_file(
-            binary_path, "cody-agent", version
-        )
-        if not has_agent_binary:
-            print(
-                f"{YELLOW}WARNING: The Cody Agent binary does not exist at the specified path: {binary_path}{RESET}"
-            )
-            print(f"{YELLOW}WARNING: Start downloading the Cody Agent binary...{RESET}")
-            is_completed = await _download_binary_to_path(
+        cody_binary = ""
+        use_node: bool = False,
+        if not use_node:
+            has_agent_binary = await _check_for_binary_file(
                 binary_path, "cody-agent", version
             )
-            if not is_completed:
-                print(f"{RED}ERROR: Failed to download the Cody Agent binary.{RESET}")
-                sys.exit(1)
+            if not has_agent_binary:
+                print(
+                    f"{YELLOW}WARNING: The Cody Agent binary does not exist at the specified path: {binary_path}{RESET}"
+                )
+                print(f"{YELLOW}WARNING: Start downloading the Cody Agent binary...{RESET}")
+                is_completed = await _download_binary_to_path(
+                    binary_path, "cody-agent", version
+                )
+                if not is_completed:
+                    print(f"{RED}ERROR: Failed to download the Cody Agent binary.{RESET}")
+                    sys.exit(1)
 
-        cody_binary = os.path.join(
-            binary_path, await _format_binary_name("cody-agent", version)
-        )
+            cody_binary = os.path.join(
+                binary_path, await _format_binary_name("cody-agent", version)
+            )
+            
         cody_agent = CodyServer(cody_binary, use_tcp, is_debugging)
-        await cody_agent._create_server_connection()
+        await cody_agent._create_server_connection(use_node)
         return cody_agent
 
     def __init__(self, cody_binary: str, use_tcp: bool, is_debugging: bool) -> None:
@@ -54,7 +59,7 @@ class CodyServer:
         self._reader: asyncio.StreamReader | None = None
         self._writer: asyncio.StreamWriter | None = None
 
-    async def _create_server_connection(self):
+    async def _create_server_connection(self, use_node: bool = False) -> None:
         """
         Asynchronously creates a connection to the Cody server.
         If `binary_path` is an empty string, it prints an error message and exits the program.
@@ -64,7 +69,7 @@ class CodyServer:
         If the TCP connection fails after 5 retries, it prints an error message and exits the program.
         Returns the reader and writer streams for the agent connection.
         """
-        if self.cody_binary == "":
+        if not use_node and self.cody_binary == "":
             print(
                 f"{RED}You need to specify the BINARY_PATH to an absolute path to the agent binary or to the index.js file. Exiting...{RESET}"
             )
@@ -74,8 +79,10 @@ class CodyServer:
         os.environ["CODY_DEBUG"] = str(self.is_debugging).lower()
 
         self._process: Process = await asyncio.create_subprocess_exec(
-            self.cody_binary,
-            "jsonrpc",
+            self.cody_binary if not use_node else "node",# /home/prinova/CodeProjects/cody/agent/dist/index.js",
+            "--enable-source-maps",
+            "jsonrpc" if not use_node else "/home/prinova/CodeProjects/cody/agent/dist/index.js",
+            "jsonrpc" if use_node else "",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             env=os.environ,
@@ -106,7 +113,7 @@ class CodyServer:
 
                     # return reader, writer, process
                 except ConnectionRefusedError:
-                    await asyncio.sleep(0.1)  # Retry after a short delay
+                    await asyncio.sleep(2)  # Retry after a short delay
                     retry += 1
             if (retry == retry_attempts):
                 print(f"{RED}Could not connect to server. Exiting...{RESET}")
@@ -133,12 +140,12 @@ class CodyServer:
             cody_agent_specs: CodyAgentSpecs = CodyAgentSpecs.model_validate(result)
             if is_debugging:
                 print(f"Agent Info: {cody_agent_specs}\n")
-                if cody_agent_specs.authenticated:
-                    print(f"{YELLOW}--- Server is authenticated ---{RESET}")
-                else:
-                    print(f"{RED}--- Server is not authenticated ---{RESET}")
-                    await self.cleanup_server()
-                    sys.exit(1)
+            if cody_agent_specs.authenticated:
+                print(f"{YELLOW}--- Server is authenticated ---{RESET}")
+            else:
+                print(f"{RED}--- Server is not authenticated ---{RESET}")
+                await self.cleanup_server()
+                sys.exit(1)
             return await CodyAgent.init(self)
 
         return await request_response(
@@ -266,6 +273,7 @@ class CodyAgent:
         message,
         enhanced_context: bool = True,
         debug_method_map=debug_method_map,
+        contextFiles = [],
         is_debugging: bool = False,
     ) -> str:
         """
@@ -291,6 +299,7 @@ class CodyAgent:
                 "text": message,
                 "submitType": "user",
                 "addEnhancedContext": enhanced_context,
+                "contextFiles" : contextFiles,
             },
         }
 

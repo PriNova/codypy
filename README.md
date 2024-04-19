@@ -2,6 +2,12 @@
 
 **This is a WIP (work-in-progress) project** 🚧👷‍♂️
 
+> **WARNING:**
+> 
+> Only use `use_tcp=True` if you are using a local Cody Agent, because the Cody Agent binary include ca-certification verification which only works with TCP and not via stdio.
+> 
+> Also, do NOT use enhanced context. It is broken because of an issue on Sourcegraph Cody side.
+
 `codypy` is a Python wrapper binding to Cody Agent through establishing a connection to the Cody-Agent server from [Sourcegraph Cody](https://github.com/sourcegraph/cody) using JSON-RPC (Remote Procedure Call) protocol over a TCP/stdio connection. It allows sending and receiving JSON-RPC messages asynchronously. 📨📥
 
 **Note 1: You need to register an account at [Sourcegraph](https://sourcegraph.com/) and create an API key.**
@@ -56,7 +62,7 @@
    pip install -r requirements.txt
    ```
 
-1. Rename the provided `env.example` file to `.env` and set the `SRC_ACCESS_TOKEN` value to your API key and the path `BINARY_PATH` to the cody agent binary. Use the following command in Linux to rename you file: 
+1. Rename the provided `env.example` file to `.env` and set the `SRC_ACCESS_TOKEN` value to your API key and the path `BINARY_PATH` to where the cody agent binary should be downloaded and accessed. Use the following command in Linux to rename you file: 
    ```
    mv env.example .env
    ```
@@ -69,7 +75,7 @@ You are now ready to use codypy!
 
 ## Usage as a library
 
-1. Set at least the 'BINARY_PATH' and 'SRC_ACCESS_TOKEN' property to the downloaded agent binary and API Token respectively.
+1. Set at least the 'BINARY_PATH' and 'SRC_ACCESS_TOKEN' property to the downloaded path of the agent binary and API Token respectively.
 1. Set your workspace path in the 'workspaceRootUri' property to your local GitHub repository.
 1. Run the example script using `python main.py`.
 1. The script will attempt to connect to the Cody Agent.
