@@ -100,6 +100,7 @@ This example demonstrates how to use a complete cycle to establish a connection 
 - [ ] Develop unit tests for key functions in `codypy`.
 - [x] Create documentation and examples for using the `codypy` client library.
 - [ ] Implement support for including additional context about files and folders.
+- [x] Configure repository context.
 
 
 ## License
