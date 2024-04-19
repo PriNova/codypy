@@ -26,7 +26,7 @@ class CodyServer:
         
     ) -> Self:
         cody_binary = ""
-        use_node: bool = False,
+        use_node: bool = True,
         if not use_node:
             has_agent_binary = await _check_for_binary_file(
                 binary_path, "cody-agent", version

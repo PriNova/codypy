@@ -19,12 +19,12 @@ async def main():
     # Create a CodyServer instance and initialize it with the specified binary path and debugging mode.
     print(f"{YELLOW}--- Create Server Connection ---{RESET}")
     cody_server: CodyServer = await CodyServer.init(
-        binary_path=BINARY_PATH, version="0.0.5b", use_tcp = True, is_debugging=False
+        binary_path=BINARY_PATH, version="0.0.5b", use_tcp = False, is_debugging=False
     )
 
     # Create an AgentSpecs instance with the specified workspace root URI and extension configuration.
     agent_specs = AgentSpecs(
-        workspaceRootUri="/home/prinova/CodeProjects/codypy",
+        workspaceRootUri="/home/prinova/CodeProjects/CodyAgentPy",
         extensionConfiguration={
             "accessToken": SRC_ACCESS_TOKEN,
             "codebase": "", #"/home/prinova/CodeProjects/codypy",  # github.com/sourcegraph/cody",
@@ -72,7 +72,7 @@ async def main():
         response = await cody_agent.chat(
             message=message,
             enhanced_context=True,   # Set to 'True' if you wish Cody to be codebase aware
-            contextFiles=[],         # Set to the list of files you want to have context for. See the example above
+            contextFiles=contextFiles,         # Set to the list of files you want to have context for. See the example above
             is_debugging=True,
         )
         if response == "":
