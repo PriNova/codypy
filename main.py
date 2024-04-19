@@ -54,6 +54,13 @@ async def main():
         is_debugging=False,
     )
 
+    # Set the repository context
+    print(f"{YELLOW}--- Set context repo ---{RESET}")
+    await cody_agent.set_context_repo(
+        repos=["github.com/sourcegraph/cody", "github.com/PriNova/codypy"],
+        is_debugging=False,
+    )
+
     # Send a message to the chat and print the response until the user enters '/quit'.
     print(f"{YELLOW}--- Send message (short) ---{RESET}")
     debug_method_map["webview/postMessage"] = False
