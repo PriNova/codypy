@@ -19,7 +19,7 @@ async def main():
     # Create a CodyServer instance and initialize it with the specified binary path and debugging mode.
     print(f"{YELLOW}--- Create Server Connection ---{RESET}")
     cody_server: CodyServer = await CodyServer.init(
-        binary_path=BINARY_PATH, version="0.0.5b", use_tcp = False, is_debugging=False
+        binary_path=BINARY_PATH, version="0.0.5b", use_tcp = True, is_debugging=False
     )
 
     # Create an AgentSpecs instance with the specified workspace root URI and extension configuration.

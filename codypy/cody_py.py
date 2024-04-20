@@ -26,8 +26,8 @@ class CodyServer:
         
     ) -> Self:
         cody_binary = ""
-        use_node: bool = True,
-        if not use_node:
+        test_against_node_source: bool = False   # Only for internal use to test against the Cody agent Node source
+        if not test_against_node_source:
             has_agent_binary = await _check_for_binary_file(
                 binary_path, "cody-agent", version
             )
@@ -35,20 +35,24 @@ class CodyServer:
                 print(
                     f"{YELLOW}WARNING: The Cody Agent binary does not exist at the specified path: {binary_path}{RESET}"
                 )
-                print(f"{YELLOW}WARNING: Start downloading the Cody Agent binary...{RESET}")
+                print(
+                    f"{YELLOW}WARNING: Start downloading the Cody Agent binary...{RESET}"
+                )
                 is_completed = await _download_binary_to_path(
                     binary_path, "cody-agent", version
                 )
                 if not is_completed:
-                    print(f"{RED}ERROR: Failed to download the Cody Agent binary.{RESET}")
+                    print(
+                        f"{RED}ERROR: Failed to download the Cody Agent binary.{RESET}"
+                    )
                     sys.exit(1)
 
             cody_binary = os.path.join(
                 binary_path, await _format_binary_name("cody-agent", version)
             )
-            
+
         cody_agent = CodyServer(cody_binary, use_tcp, is_debugging)
-        await cody_agent._create_server_connection(use_node)
+        await cody_agent._create_server_connection(test_against_node_source)
         return cody_agent
 
     def __init__(self, cody_binary: str, use_tcp: bool, is_debugging: bool) -> None:
@@ -59,17 +63,19 @@ class CodyServer:
         self._reader: asyncio.StreamReader | None = None
         self._writer: asyncio.StreamWriter | None = None
 
-    async def _create_server_connection(self, use_node: bool = False) -> None:
+    async def _create_server_connection(
+        self, test_against_node_source: bool = False
+    ) -> None:
         """
         Asynchronously creates a connection to the Cody server.
-        If `binary_path` is an empty string, it prints an error message and exits the program.
+        If `cody_binary` is an empty string, it prints an error message and exits the program.
         Sets the `CODY_AGENT_DEBUG_REMOTE` and `CODY_DEBUG` environment variables based on the `use_tcp` and `is_debugging` flags, respectively.
         Creates a subprocess to run the Cody agent, either by executing the `bin/agent` binary or running the `index.js` file specified by `binary_path`.
         Depending on the `use_tcp` flag, it either connects to the agent using stdio or opens a TCP connection to `localhost:3113`.
         If the TCP connection fails after 5 retries, it prints an error message and exits the program.
         Returns the reader and writer streams for the agent connection.
         """
-        if not use_node and self.cody_binary == "":
+        if not test_against_node_source and self.cody_binary == "":
             print(
                 f"{RED}You need to specify the BINARY_PATH to an absolute path to the agent binary or to the index.js file. Exiting...{RESET}"
             )
@@ -78,11 +84,20 @@ class CodyServer:
         os.environ["CODY_AGENT_DEBUG_REMOTE"] = str(self.use_tcp).lower()
         os.environ["CODY_DEBUG"] = str(self.is_debugging).lower()
 
+        args = []
+        bin = ""
+        if test_against_node_source:
+            bin = "node"
+            args.append(f"--enable-source-maps")
+            args.append(f"/home/prinova/CodeProjects/cody/agent/dist/index.js")
+            args.append(f"jsonrpc")
+        else:
+            bin = self.cody_binary
+            args.append(f"jsonrpc")
+
         self._process: Process = await asyncio.create_subprocess_exec(
-            self.cody_binary if not use_node else "node",# /home/prinova/CodeProjects/cody/agent/dist/index.js",
-            "--enable-source-maps",
-            "jsonrpc" if not use_node else "/home/prinova/CodeProjects/cody/agent/dist/index.js",
-            "jsonrpc" if use_node else "",
+            bin,
+            *args,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             env=os.environ,
@@ -102,7 +117,7 @@ class CodyServer:
                 print(f"{YELLOW}--- TCP connection ---{RESET}")
             retry: int = 0
             retry_attempts: int = 5
-            while retry < retry_attempts:
+            for retry in range(retry_attempts):
                 try:
                     (self._reader, self._writer) = await asyncio.open_connection(
                         "localhost", 3113
@@ -113,9 +128,9 @@ class CodyServer:
 
                     # return reader, writer, process
                 except ConnectionRefusedError:
-                    await asyncio.sleep(2)  # Retry after a short delay
+                    await asyncio.sleep(1)  # Retry after a short delay
                     retry += 1
-            if (retry == retry_attempts):
+            if retry == retry_attempts:
                 print(f"{RED}Could not connect to server. Exiting...{RESET}")
                 sys.exit(1)
 
@@ -366,7 +381,7 @@ class CodyAgent:
         message,
         enhanced_context: bool = True,
         debug_method_map=debug_method_map,
-        contextFiles = [],
+        contextFiles=[],
         is_debugging: bool = False,
     ) -> str:
         """
@@ -392,7 +407,7 @@ class CodyAgent:
                 "text": message,
                 "submitType": "user",
                 "addEnhancedContext": enhanced_context,
-                "contextFiles" : contextFiles,
+                "contextFiles": contextFiles,
             },
         }
 
