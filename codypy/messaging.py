@@ -224,7 +224,6 @@ async def request_response(
     reader,
     writer,
     is_debugging: bool,
-    callback=None,
 ) -> Any:
     """
     Sends a JSON-RPC request to a server and handles the response.
@@ -253,9 +252,7 @@ async def request_response(
         if response and await _hasResult(response):
             if is_debugging:
                 print(f"Result: \n\n{response}\n")
-            if callback:
-                return await callback(response["result"])
-            else:
-                return response["result"]
+    
+            return response["result"]
 
     return None

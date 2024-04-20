@@ -21,12 +21,13 @@ class CodyServer:
     async def init(
         binary_path: str,
         version: str,
-        use_tcp: bool = True,        # default because of ca-certificate verification
+        use_tcp: bool = True,  # default because of ca-certificate verification
         is_debugging: bool = False,
-        
     ) -> Self:
         cody_binary = ""
-        test_against_node_source: bool = False   # Only for internal use to test against the Cody agent Node source
+        test_against_node_source: bool = (
+            False  # Only for internal use to test against the Cody agent Node source
+        )
         if not test_against_node_source:
             has_agent_binary = await _check_for_binary_file(
                 binary_path, "cody-agent", version
@@ -151,27 +152,25 @@ class CodyServer:
         the debug method map, the reader and writer streams, the debugging flag, and the callback function.
         """
 
-        async def callback(result):
-            cody_agent_specs: CodyAgentSpecs = CodyAgentSpecs.model_validate(result)
-            if is_debugging:
-                print(f"Agent Info: {cody_agent_specs}\n")
-            if cody_agent_specs.authenticated:
-                print(f"{YELLOW}--- Server is authenticated ---{RESET}")
-            else:
-                print(f"{RED}--- Server is not authenticated ---{RESET}")
-                await self.cleanup_server()
-                sys.exit(1)
-            return await CodyAgent.init(self)
-
-        return await request_response(
+        response = await request_response(
             "initialize",
             agent_specs.model_dump(),
             debug_method_map,
             self._reader,
             self._writer,
             is_debugging,
-            callback,
         )
+
+        cody_agent_specs: CodyAgentSpecs = CodyAgentSpecs.model_validate(response)
+        if is_debugging:
+            print(f"Agent Info: {cody_agent_specs}\n")
+        if cody_agent_specs.authenticated:
+            print(f"{YELLOW}--- Server is authenticated ---{RESET}")
+        else:
+            print(f"{RED}--- Server is not authenticated ---{RESET}")
+            await self.cleanup_server()
+            sys.exit(1)
+        return await CodyAgent.init(self)
 
     async def cleanup_server(self):
         """
@@ -204,24 +203,22 @@ class CodyAgent:
             is_debugging (bool, optional): A flag indicating whether debugging is enabled. Defaults to False.
         """
 
-        async def callback(result):
-            self.chat_id = result
-
-        await request_response(
+        response = await request_response(
             "chat/new",
             None,
             debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
             is_debugging,
-            callback,
         )
+        
+        self.chat_id = response
 
     async def _lookup_repo_ids(
         self,
         repos: list[str],
         debug_method_map=debug_method_map,
-        is_debugging: bool = False
+        is_debugging: bool = False,
     ) -> list[dict]:
         """Lookup repository objects via their names
 
@@ -239,8 +236,19 @@ class CodyAgent:
 
         repos_to_lookup = [x for x in repos if x not in self.repos]
 
-        async def callback(result):
-            for repo in result["repos"]:
+        if repos_to_lookup:
+            # Example input: github.com/jsmith/awesomeapp
+            # Example output: {"repos":[{"name":"github.com/jsmith/awesomeapp","id":"UmVwb3NpdG9yeToxMjM0"}]}
+            response = await request_response(
+                "graphql/getRepoIds",
+                {"names": repos_to_lookup, "first": len(repos_to_lookup)},
+                debug_method_map,
+                self._cody_server._reader,
+                self._cody_server._writer,
+                is_debugging,
+            )
+            
+            for repo in response["repos"]:
                 self.repos[repo["name"]] = repo
             # Whatever we didn't find, add it to a cache with a None
             # to avoid further lookups.
@@ -248,26 +256,13 @@ class CodyAgent:
                 if repo not in self.repos:
                     self.repos[repo] = None
 
-        if repos_to_lookup:
-            # Example input: github.com/jsmith/awesomeapp
-            # Example output: {"repos":[{"name":"github.com/jsmith/awesomeapp","id":"UmVwb3NpdG9yeToxMjM0"}]}
-            await request_response(
-                "graphql/getRepoIds",
-                {"names": repos_to_lookup, "first": len(repos_to_lookup)},
-                debug_method_map,
-                self._cody_server._reader,
-                self._cody_server._writer,
-                is_debugging,
-                callback,
-            )
-
         return [self.repos[x] for x in repos if self.repos[x]]
 
     async def set_context_repo(
         self,
         repos: list[str],
         debug_method_map=debug_method_map,
-        is_debugging: bool = False
+        is_debugging: bool = False,
     ) -> None:
         """Set repositories to use as context
 
@@ -326,19 +321,17 @@ class CodyAgent:
             Any: The result of the "chat/models" request.
         """
 
-        async def callback(result):
-            return result
-
         model = {"modelUsage": f"{model_type}"}
-        return await request_response(
+        response = await request_response(
             "chat/models",
             model,
             debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
-            is_debugging,
-            callback,
+            is_debugging
         )
+        
+        return response
 
     async def set_model(
         self,
@@ -358,23 +351,21 @@ class CodyAgent:
             Any: The result of the "webview/receiveMessage" request.
         """
 
-        async def callback(result):
-            return result
-
         command = {
             "id": f"{self.chat_id}",
             "message": {"command": "chatModel", "model": f"{model.value.model_id}"},
         }
 
-        return await request_response(
+        response = await request_response(
             "webview/receiveMessage",
             command,
             debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
             is_debugging,
-            callback,
         )
+        
+        return response
 
     async def chat(
         self,
@@ -419,6 +410,7 @@ class CodyAgent:
             self._cody_server._writer,
             is_debugging,
         )
+        
         (speaker, response) = await _show_last_message(result, is_debugging)
         if speaker == "" or response == "":
             print(f"{RED}--- Failed to submit chat message ---{RESET}")
