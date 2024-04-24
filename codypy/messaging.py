@@ -71,7 +71,7 @@ async def _handle_server_respones(
     reader: asyncio.StreamReader,
 ) -> AsyncGenerator[Dict[str, Any], Any]:
     """
-    Asynchronously handles server responses by reading JSON-RPC messages 
+    Asynchronously handles server responses by reading JSON-RPC messages
     from the provided `asyncio.StreamReader`.
 
     This function yields each JSON-RPC response as a dictionary, until a timeout occurs.
@@ -160,7 +160,7 @@ async def _handle_json_data(json_data, configs: Configs) -> Dict[str, Any] | Non
         configs (Configs): The configuration settings to use during processing.
 
     Returns:
-        Dict[str, Any] | None: The extracted "method" or "result" from the JSON response, 
+        Dict[str, Any] | None: The extracted "method" or "result" from the JSON response,
         or the original JSON response if neither "method" nor "result" is present.
     """
     json_response: Dict[str, Any] = pd.from_json(json_data)
@@ -180,8 +180,8 @@ async def _handle_json_data(json_data, configs: Configs) -> Dict[str, Any] | Non
 
 
 async def _show_last_message(
-    messages: Dict[str, Any], is_debugging: bool
-) -> Tuple[str, str]:
+    messages: Dict[str, Any], show_context_files: bool, is_debugging: bool
+) -> Tuple[str, str, list[str]]:
     """
     Retrieves the speaker and text of the last message in a transcript.
 
@@ -192,14 +192,33 @@ async def _show_last_message(
     Returns:
         Tuple[str, str]: A tuple containing the speaker and text of the last message.
     """
-    if messages["type"] == "transcript":
-        last_message = messages["messages"][-1:]
+    if messages is not None and messages["type"] == "transcript":
+        last_message = messages["messages"][-1:][0]
         if is_debugging:
-            print(f"Last message: {last_message}")
-        speaker: str = last_message[0]["speaker"]
-        text: str = last_message[0]["text"]
-        return speaker, text
-    return ("", "")
+            print(f"Last message: {last_message}\n")
+        speaker: str = last_message["speaker"]
+        text: str = last_message["text"]
+
+        context_file_results = []
+        if show_context_files:
+            context_files: list[any] = messages["messages"]
+
+            for context_result in context_files:
+                res = (
+                    context_result["contextFiles"]
+                    if "contextFiles" in context_result
+                    else []
+                )
+                for reso in res:
+                    uri = reso["uri"]["path"]
+                    if "range" in reso:
+                        rng = reso["range"]
+                        rng_start = rng["start"]["line"]
+                        rng_end = rng["end"]["line"]
+                        context_file_results.append(f"{uri}:{rng_start}-{rng_end}")
+
+        return speaker, text, context_file_results
+    return ("", "", [])
 
 
 async def _show_messages(message, configs: Configs) -> None:
@@ -207,8 +226,8 @@ async def _show_messages(message, configs: Configs) -> None:
     Prints the speaker and text of each message in a transcript.
 
     Args:
-        message (dict): A dictionary containing the message history, with a "type" key set to 
-                        "transcript" and a "messages" key containing 
+        message (dict): A dictionary containing the message history, with a "type" key set to
+                        "transcript" and a "messages" key containing
                         a list of message dictionaries.
         configs (Configs): The configuration settings to use during processing.
 
@@ -236,7 +255,7 @@ async def request_response(
     Args:
         method_name (str): The name of the JSON-RPC method to call.
         params: The parameters to pass to the JSON-RPC method.
-        debug_method_map (dict): A mapping of method names to a boolean 
+        debug_method_map (dict): A mapping of method names to a boolean
                                 indicating whether to print the response.
         reader (asyncio.StreamReader): The reader stream to use for receiving responses.
         writer (asyncio.StreamWriter): The writer stream to use for sending requests.

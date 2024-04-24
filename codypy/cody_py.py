@@ -2,7 +2,7 @@ import asyncio
 import os
 import sys
 from asyncio.subprocess import Process
-from typing import Any, Literal, Self
+from typing import Any, Self
 
 from codypy.client_info import AgentSpecs, Models
 from codypy.utils import (
@@ -367,6 +367,7 @@ class CodyAgent:
         self,
         message,
         enhanced_context: bool = True,
+        show_context_files: bool = False,
         debug_method_map=debug_method_map,
         context_files=None,
         is_debugging: bool = False,
@@ -387,7 +388,7 @@ class CodyAgent:
         if context_files is None:
             context_files = []
         if message == "/quit":
-            return ""
+            return "", []
 
         chat_message_request = {
             "id": f"{self.chat_id}",
@@ -409,13 +410,18 @@ class CodyAgent:
             is_debugging,
         )
 
-        (speaker, response) = await _show_last_message(result, is_debugging)
+        (speaker, response, context_files_response) = await _show_last_message(
+            result, show_context_files, is_debugging
+        )
         if speaker == "" or response == "":
             print(f"{RED}--- Failed to submit chat message ---{RESET}")
             await self._cody_server.cleanup_server()
             sys.exit(1)
 
-        return f"{BLUE}{speaker.capitalize()}{RESET}: {response}\n"
+        return (
+            f"{BLUE}{speaker.capitalize()}{RESET}: {response}\n",
+            context_files_response,
+        )
 
 
 async def get_remote_repositories(

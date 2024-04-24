@@ -20,7 +20,7 @@ async def main():
     # with the specified binary path and debugging mode.
     print(f"{YELLOW}--- Create Server Connection ---{RESET}")
     cody_server: CodyServer = await CodyServer.init(
-        binary_path=BINARY_PATH, version="0.0.5b", use_tcp=False, is_debugging=False
+        binary_path=BINARY_PATH, version="0.0.5b", is_debugging=False
     )
 
     # Create an AgentSpecs instance with the specified workspace root URI
@@ -78,17 +78,23 @@ async def main():
 
     while True:
         message: str = input(f"{GREEN}Human:{RESET} ")
-        response = await cody_agent.chat(
+        response, context_files_response = await cody_agent.chat(
             message=message,
             # Set to 'True' if you wish Cody to be codebase aware
             enhanced_context=True,
+            # Set to 'True' if the inferred context files with optional ranges
+            # should be returned else an empty list
+            show_context_files=True,
             # Set to the list of files you want to have context for. See the example above
             context_files=context_files,
-            is_debugging=True,
+            is_debugging=False,
         )
         if response == "":
             break
         print(response)
+        print("--- Context Files ---")
+        for context in context_files_response:
+            print(f"{YELLOW}{context}{RESET}")
 
     debug_method_map["webview/postMessage"] = True
 

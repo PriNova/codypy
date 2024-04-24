@@ -19,6 +19,7 @@
 - Handles connection errors and timeouts
 - Extracts method and result from JSON-RPC responses
 - Supports asynchronous communication using `asyncio` library
+- Show inferred context files if any with optional line ranges
 
 ## Requirements
 
@@ -70,7 +71,8 @@ You are now ready to use codypy!
 
 ## Usage as a library
 
-1. Set at least the 'BINARY_PATH' and 'SRC_ACCESS_TOKEN' property to the downloaded path of the agent binary and API Token respectively.
+1. Required to set the 'BINARY_PATH' where to download or use the agent binary 
+1. Required to set the 'SRC_ACCESS_TOKEN' env to the API Token from your Sourcegraph account.
 1. Set your workspace path in the 'workspaceRootUri' property to your local GitHub repository.
 1. Run the example script using `python main.py`.
 1. The script will attempt to connect to the Cody Agent.
@@ -82,7 +84,7 @@ You are now ready to use codypy!
 
 ## Usage as CLI tool
 
-If installed as a package like mentioned above, you can also use codypy as a CLI tool. Simply export `SRC_ACCESS_TOKEN` and `BINARY_PATH` to your environment and in the terminal execute `codypy-cli --help` to see the available options.
+If installed as a package like mentioned above, you can also use codypy as a CLI tool. Simply export `SRC_ACCESS_TOKEN` and `BINARY_PATH` to your environment and in the terminal execute `codypy-cli --help` to see the available options and flags.
 
 ## Example
 
@@ -101,6 +103,7 @@ This example demonstrates how to use a complete cycle to establish a connection 
 - [x] Create documentation and examples for using the `codypy` client library.
 - [ ] Implement support for including additional context about files and folders.
 - [x] Configure repository context.
+- [x] Show inferred context files from the conversation.
 
 
 ## License

@@ -40,10 +40,18 @@ async def async_main():
     )
 
     parser.add_argument(
-        "-c",
+        "-ec",
+        "--enhanced-context",
         type=bool,
         default=True,
         help="Use enhanced context if in a git repo  (needs remote repo configured). Default=True",
+    )
+    parser.add_argument(
+        "-sc",
+        "--show-context",
+        type=bool,
+        default=False,
+        help="Show the inferred context files from the message if any. Default=True",
     )
 
     args = parser.parse_args()
@@ -52,7 +60,7 @@ async def async_main():
 
 async def chat(args):
     cody_server: CodyServer = await CodyServer.init(
-        binary_path=args.binary_path, is_debugging=False
+        binary_path=args.binary_path, version="0.0.5b", is_debugging=False
     )
     # Create an AgentSpecs instance with the specified workspace root URI and extension configuration.
     agent_specs = AgentSpecs(
@@ -72,7 +80,8 @@ async def chat(args):
     debug_method_map["webview/postMessage"] = False
     response = await cody_agent.chat(
         message=args.message,
-        enhanced_context=args.c,
+        enhanced_context=args.ec,
+        show_context_files=args.sc,
         is_debugging=False,
     )
     if response == "":
