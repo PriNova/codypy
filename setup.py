@@ -12,7 +12,7 @@ setup(
     long_description_content_type="text/markdown",
     author="PriNova",
     author_email="info@prinova.de",
-    url="https://github.com/PriNova/CodyAgentPy",
+    url="https://github.com/PriNova/codypy",
     packages=find_packages(),
     entry_points={
         'console_scripts': [

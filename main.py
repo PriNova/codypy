@@ -16,18 +16,20 @@ async def main():
 
     # debug_method_map: Dict[str, Any] = await get_debug_map()
 
-    # Create a CodyServer instance and initialize it with the specified binary path and debugging mode.
+    # Create a CodyServer instance and initialize it
+    # with the specified binary path and debugging mode.
     print(f"{YELLOW}--- Create Server Connection ---{RESET}")
     cody_server: CodyServer = await CodyServer.init(
-        binary_path=BINARY_PATH, version="0.0.5b", use_tcp = False, is_debugging=False
+        binary_path=BINARY_PATH, version="0.0.5b", use_tcp=False, is_debugging=False
     )
 
-    # Create an AgentSpecs instance with the specified workspace root URI and extension configuration.
+    # Create an AgentSpecs instance with the specified workspace root URI
+    # and extension configuration.
     agent_specs = AgentSpecs(
         workspaceRootUri="/home/prinova/CodeProjects/CodyAgentPy",
         extensionConfiguration={
             "accessToken": SRC_ACCESS_TOKEN,
-            "codebase": "", #"/home/prinova/CodeProjects/codypy",  # github.com/sourcegraph/cody",
+            "codebase": "",  # "/home/prinova/CodeProjects/codypy",  # github.com/sourcegraph/cody",
             "customConfiguration": {},
         },
     )
@@ -64,13 +66,13 @@ async def main():
     # Send a message to the chat and print the response until the user enters '/quit'.
     print(f"{YELLOW}--- Send message (short) ---{RESET}")
     debug_method_map["webview/postMessage"] = False
-    contextFiles = [
+    context_files = [
         {
             "type": "file",
-            "uri" : {
+            "uri": {
                 "fsPath": "/home/prinova/CodeProjects/CodyAgentPy/main.py",
                 "path": "/home/prinova/CodeProjects/CodyAgentPy/main.py",
-            }
+            },
         }
     ]
 
@@ -78,9 +80,11 @@ async def main():
         message: str = input(f"{GREEN}Human:{RESET} ")
         response = await cody_agent.chat(
             message=message,
-            enhanced_context=False,   # Set to 'True' if you wish Cody to be codebase aware
-            contextFiles=contextFiles,         # Set to the list of files you want to have context for. See the example above
-            is_debugging=False,
+            # Set to 'True' if you wish Cody to be codebase aware
+            enhanced_context=True,
+            # Set to the list of files you want to have context for. See the example above
+            context_files=context_files,
+            is_debugging=True,
         )
         if response == "":
             break

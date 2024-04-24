@@ -57,7 +57,7 @@
    pip install -r requirements.txt
    ```
 
-1. Rename the provided `env.example` file to `.env` and set the `SRC_ACCESS_TOKEN` value to your API key and the path `BINARY_PATH` to where the cody agent binary should be downloaded and accessed. Use the following command in Linux to rename you file: 
+1. Rename the provided `env.example` file to `.env` and set the `SRC_ACCESS_TOKEN` value to your API key and the path `BINARY_PATH` to where the cody agent binary should be downloaded and accessed. Use the following command in Linux to rename your file: 
    ```
    mv env.example .env
    ```

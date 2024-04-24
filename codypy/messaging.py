@@ -6,7 +6,7 @@ import pydantic_core as pd
 
 from codypy.config import Configs
 
-message_id = 1
+MESSAGE_ID = 1
 
 
 async def _send_jsonrpc_request(
@@ -18,15 +18,16 @@ async def _send_jsonrpc_request(
     Args:
         writer: The asyncio StreamWriter to use for sending the request.
         method: The JSON-RPC method to call.
-        params: The parameters to pass to the JSON-RPC method, or None if no parameters are required.
+        params: The parameters to pass to the JSON-RPC method,
+                or None if no parameters are required.
 
     Raises:
         None
     """
-    global message_id
+    global MESSAGE_ID
     message: Dict[str, Any] = {
         "jsonrpc": "2.0",
-        "id": message_id,
+        "id": MESSAGE_ID,
         "method": method,
         "params": params,
     }
@@ -39,7 +40,7 @@ async def _send_jsonrpc_request(
     # Send the JSON-RPC message to the server
     writer.write(content_message.encode("utf-8"))
     await writer.drain()
-    message_id += 1
+    MESSAGE_ID += 1
 
 
 async def _receive_jsonrpc_messages(reader: asyncio.StreamReader) -> str:
@@ -70,7 +71,8 @@ async def _handle_server_respones(
     reader: asyncio.StreamReader,
 ) -> AsyncGenerator[Dict[str, Any], Any]:
     """
-    Asynchronously handles server responses by reading JSON-RPC messages from the provided `asyncio.StreamReader`.
+    Asynchronously handles server responses by reading JSON-RPC messages 
+    from the provided `asyncio.StreamReader`.
 
     This function yields each JSON-RPC response as a dictionary, until a timeout occurs.
 
@@ -91,7 +93,7 @@ async def _handle_server_respones(
         yield pd.from_json("{}")
 
 
-async def _hasMethod(json_response: Dict[str, Any]) -> bool:
+async def _has_method(json_response: Dict[str, Any]) -> bool:
     """
     Checks if the provided JSON response contains a "method" key.
 
@@ -104,7 +106,7 @@ async def _hasMethod(json_response: Dict[str, Any]) -> bool:
     return "method" in json_response
 
 
-async def _hasResult(json_response: Dict[str, Any]) -> bool:
+async def _has_result(json_response: Dict[str, Any]) -> bool:
     """
     Checks if the provided JSON response contains a "result" key.
 
@@ -117,7 +119,7 @@ async def _hasResult(json_response: Dict[str, Any]) -> bool:
     return "result" in json_response
 
 
-async def _extraxtResult(json_response: Dict[str, Any]) -> Dict[str, Any] | None:
+async def _extraxt_result(json_response: Dict[str, Any]) -> Dict[str, Any] | None:
     """
     Attempts to extract the "result" key from the provided JSON response dictionary.
 
@@ -129,11 +131,11 @@ async def _extraxtResult(json_response: Dict[str, Any]) -> Dict[str, Any] | None
     """
     try:
         return json_response["result"]
-    except JSONDecodeError as e:
+    except JSONDecodeError as _:
         return None
 
 
-async def _extraxtMethod(json_response) -> Dict[str, Any] | None:
+async def _extraxt_method(json_response) -> Dict[str, Any] | None:
     """
     Attempts to extract the "method" key from the provided JSON response dictionary.
 
@@ -145,7 +147,7 @@ async def _extraxtMethod(json_response) -> Dict[str, Any] | None:
     """
     try:
         return json_response["method"]
-    except JSONDecodeError as e:
+    except JSONDecodeError as _:
         return None
 
 
@@ -158,20 +160,21 @@ async def _handle_json_data(json_data, configs: Configs) -> Dict[str, Any] | Non
         configs (Configs): The configuration settings to use during processing.
 
     Returns:
-        Dict[str, Any] | None: The extracted "method" or "result" from the JSON response, or the original JSON response if neither "method" nor "result" is present.
+        Dict[str, Any] | None: The extracted "method" or "result" from the JSON response, 
+        or the original JSON response if neither "method" nor "result" is present.
     """
     json_response: Dict[str, Any] = pd.from_json(json_data)
-    if await _hasMethod(json_response):
+    if await _has_method(json_response):
         if configs.IS_DEBUGGING:
             print(f"Method: {json_response['method']}\n")
         if "params" in json_response and configs.IS_DEBUGGING:
             print(f"Params: \n{json_response['params']}\n")
-        return await _extraxtMethod(json_response)
+        return await _extraxt_method(json_response)
 
-    if await _hasResult(json_response):
+    if await _has_result(json_response):
         if configs.IS_DEBUGGING:
-            print(f"Result: \n\n{await _extraxtResult(json_response)}\n")
-        return await _extraxtResult(json_response)
+            print(f"Result: \n\n{await _extraxt_result(json_response)}\n")
+        return await _extraxt_result(json_response)
 
     return json_response
 
@@ -204,7 +207,9 @@ async def _show_messages(message, configs: Configs) -> None:
     Prints the speaker and text of each message in a transcript.
 
     Args:
-        message (dict): A dictionary containing the message history, with a "type" key set to "transcript" and a "messages" key containing a list of message dictionaries.
+        message (dict): A dictionary containing the message history, with a "type" key set to 
+                        "transcript" and a "messages" key containing 
+                        a list of message dictionaries.
         configs (Configs): The configuration settings to use during processing.
 
     Returns:
@@ -231,28 +236,31 @@ async def request_response(
     Args:
         method_name (str): The name of the JSON-RPC method to call.
         params: The parameters to pass to the JSON-RPC method.
-        debug_method_map (dict): A mapping of method names to a boolean indicating whether to print the response.
+        debug_method_map (dict): A mapping of method names to a boolean 
+                                indicating whether to print the response.
         reader (asyncio.StreamReader): The reader stream to use for receiving responses.
         writer (asyncio.StreamWriter): The writer stream to use for sending requests.
         is_debugging (bool): A flag indicating whether debugging is enabled.
-        callback (Optional[Callable[[Any], Awaitable[Any]]]): An optional callback function to handle the response result.
 
     Returns:
         Any: The result of the JSON-RPC request, or None if no result is available.
     """
     await _send_jsonrpc_request(writer, method_name, params)
     async for response in _handle_server_respones(reader):
-        if is_debugging and await _hasMethod(response):
+        if is_debugging and await _has_method(response):
             recieved_method_name = response["method"]
-            if recieved_method_name in debug_method_map and debug_method_map[recieved_method_name]:
+            if (
+                recieved_method_name in debug_method_map
+                and debug_method_map[recieved_method_name]
+            ):
                 print(f"Response: \n\n{response}\n")
             if recieved_method_name not in debug_method_map:
                 print(f"Response: \n\n{response}\n")
 
-        if response and await _hasResult(response):
+        if response and await _has_result(response):
             if is_debugging:
                 print(f"Result: \n\n{response}\n")
-    
+
             return response["result"]
 
     return None

@@ -86,18 +86,20 @@ class CodyServer:
         os.environ["CODY_DEBUG"] = str(self.is_debugging).lower()
 
         args = []
-        bin = ""
+        binary = ""
         if test_against_node_source:
-            bin = "node"
-            args.append(f"--enable-source-maps")
-            args.append(f"/home/prinova/CodeProjects/cody/agent/dist/index.js")
-            args.append(f"jsonrpc")
+            binary = "node"
+            args.extend(
+                (
+                    "--enable-source-maps",
+                    "/home/prinova/CodeProjects/cody/agent/dist/index.js",
+                )
+            )
         else:
-            bin = self.cody_binary
-            args.append(f"jsonrpc")
-
+            binary = self.cody_binary
+        args.append("jsonrpc")
         self._process: Process = await asyncio.create_subprocess_exec(
-            bin,
+            binary,
             *args,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
@@ -211,7 +213,7 @@ class CodyAgent:
             self._cody_server._writer,
             is_debugging,
         )
-        
+
         self.chat_id = response
 
     async def _lookup_repo_ids(
@@ -234,9 +236,7 @@ class CodyAgent:
                                            enabled. Defaults to False.
         """
 
-        repos_to_lookup = [x for x in repos if x not in self.repos]
-
-        if repos_to_lookup:
+        if repos_to_lookup := [x for x in repos if x not in self.repos]:
             # Example input: github.com/jsmith/awesomeapp
             # Example output: {"repos":[{"name":"github.com/jsmith/awesomeapp","id":"UmVwb3NpdG9yeToxMjM0"}]}
             response = await request_response(
@@ -247,7 +247,7 @@ class CodyAgent:
                 self._cody_server._writer,
                 is_debugging,
             )
-            
+
             for repo in response["repos"]:
                 self.repos[repo["name"]] = repo
             # Whatever we didn't find, add it to a cache with a None
@@ -322,16 +322,14 @@ class CodyAgent:
         """
 
         model = {"modelUsage": f"{model_type}"}
-        response = await request_response(
+        return await request_response(
             "chat/models",
             model,
             debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
-            is_debugging
+            is_debugging,
         )
-        
-        return response
 
     async def set_model(
         self,
@@ -356,7 +354,7 @@ class CodyAgent:
             "message": {"command": "chatModel", "model": f"{model.value.model_id}"},
         }
 
-        response = await request_response(
+        return await request_response(
             "webview/receiveMessage",
             command,
             debug_method_map,
@@ -364,15 +362,13 @@ class CodyAgent:
             self._cody_server._writer,
             is_debugging,
         )
-        
-        return response
 
     async def chat(
         self,
         message,
         enhanced_context: bool = True,
         debug_method_map=debug_method_map,
-        contextFiles=[],
+        context_files=None,
         is_debugging: bool = False,
     ) -> str:
         """
@@ -388,6 +384,8 @@ class CodyAgent:
             str: The response from the Cody server, formatted as a string with the speaker and response.
         """
 
+        if context_files is None:
+            context_files = []
         if message == "/quit":
             return ""
 
@@ -398,7 +396,7 @@ class CodyAgent:
                 "text": message,
                 "submitType": "user",
                 "addEnhancedContext": enhanced_context,
-                "contextFiles": contextFiles,
+                "contextFiles": context_files,
             },
         }
 
@@ -410,15 +408,14 @@ class CodyAgent:
             self._cody_server._writer,
             is_debugging,
         )
-        
+
         (speaker, response) = await _show_last_message(result, is_debugging)
         if speaker == "" or response == "":
             print(f"{RED}--- Failed to submit chat message ---{RESET}")
             await self._cody_server.cleanup_server()
             sys.exit(1)
 
-        output = f"{BLUE}{speaker.capitalize()}{RESET}: {response}\n"
-        return output
+        return f"{BLUE}{speaker.capitalize()}{RESET}: {response}\n"
 
 
 async def get_remote_repositories(
