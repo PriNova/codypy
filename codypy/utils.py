@@ -1,4 +1,3 @@
-import asyncio
 import os
 import platform
 
@@ -67,7 +66,9 @@ async def _has_file(binary_path: str, cody_agent_bin: str) -> bool:
     return os.path.isfile(joined_path_and_file)
 
 
-async def _check_for_binary_file(binary_path: str, cody_name: str, version: str) -> bool:
+async def _check_for_binary_file(
+    binary_path: str, cody_name: str, version: str
+) -> bool:
     """
     Checks if a binary file for the Cody agent exists at the specified path.
 
@@ -127,7 +128,7 @@ async def _download_binary_to_path(
         with open(cody_binaray_path, "wb") as f:
             f.write(r.content)
             print(f"Downloaded {cody_agent} to {binary_path}")
-            
+
             # set permission to chmod +x for the downloaded file
             os.chmod(cody_binaray_path, 0o755)
             return True

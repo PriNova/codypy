@@ -13,7 +13,6 @@ BINARY_PATH = os.getenv("BINARY_PATH")
 
 
 async def main():
-
     # debug_method_map: Dict[str, Any] = await get_debug_map()
 
     # Create a CodyServer instance and initialize it
