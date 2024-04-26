@@ -58,7 +58,7 @@
    pip install -r requirements.txt
    ```
 
-1. Rename the provided `env.example` file to `.env` and set the `SRC_ACCESS_TOKEN` value to your API key and the path `BINARY_PATH` to where the cody agent binary should be downloaded and accessed. Use the following command in Linux to rename your file: 
+1. Rename the provided `env.example` file to `.env` and set the `SRC_ACCESS_TOKEN` value to your API key and the path `BINARY_PATH` to where the cody agent binary should be downloaded and accessed. Use the following command in Linux to rename your file:
    ```
    mv env.example .env
    ```
@@ -71,7 +71,7 @@ You are now ready to use codypy!
 
 ## Usage as a library
 
-1. Required to set the 'BINARY_PATH' where to download or use the agent binary 
+1. Required to set the 'BINARY_PATH' where to download or use the agent binary
 1. Required to set the 'SRC_ACCESS_TOKEN' env to the API Token from your Sourcegraph account.
 1. Set your workspace path in the 'workspaceRootUri' property to your local GitHub repository.
 1. Run the example script using `python main.py`.

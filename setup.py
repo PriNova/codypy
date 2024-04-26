@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 # Read the contents of requirements.txt
-with open('requirements.txt') as f:
+with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
 setup(
@@ -15,8 +15,8 @@ setup(
     url="https://github.com/PriNova/codypy",
     packages=find_packages(),
     entry_points={
-        'console_scripts': [
-            'codypy-cli = cli:main',
+        "console_scripts": [
+            "codypy-cli = cli:main",
         ],
     },
     install_requires=requirements,

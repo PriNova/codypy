@@ -17,7 +17,6 @@ from .server_info import CodyAgentSpecs
 
 
 class CodyServer:
-
     async def init(
         binary_path: str,
         version: str,
@@ -427,7 +426,6 @@ class CodyAgent:
 async def get_remote_repositories(
     reader, writer, id: str, configs: Configs, debug_method_map
 ) -> Any:
-
     return await request_response(
         "chat/remoteRepos", id, debug_method_map, reader, writer, configs
     )
@@ -436,7 +434,6 @@ async def get_remote_repositories(
 async def receive_webviewmessage(
     reader, writer, params, configs: Configs, debug_method_map
 ) -> Any:
-
     return await request_response(
         "webview/receiveMessage",
         params,
