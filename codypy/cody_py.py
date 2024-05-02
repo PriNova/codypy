@@ -413,9 +413,7 @@ class CodyAgent:
             result, show_context_files, is_debugging
         )
         if speaker == "" or response == "":
-            print(f"{RED}--- Failed to submit chat message ---{RESET}")
-            await self._cody_server.cleanup_server()
-            sys.exit(1)
+            return f"{RED}--- Failed to submit chat message ---{RESET}"
 
         return (
             f"{BLUE}{speaker.capitalize()}{RESET}: {response}\n",
