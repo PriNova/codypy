@@ -16,7 +16,7 @@ BINARY_PATH = os.getenv("BINARY_PATH")
 
 async def main():
     # set the global logger
-    await setup_logger("codypy", "logs")
+    setup_logger("codypy", "logs")
 
     # debug_method_map: Dict[str, Any] = await get_debug_map()
 

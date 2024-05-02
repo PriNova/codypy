@@ -1,5 +1,6 @@
 /venv
 /bin
+/build
 .env
 .cody
 **/__pycache__

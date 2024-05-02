@@ -6,7 +6,7 @@ from logging import DEBUG, FileHandler, Formatter, getLogger
 logger = None
 
 
-async def setup_logger(name, workspace_path):
+def setup_logger(name, workspace_path):
     """
     Sets up a logger with a file handler for the specified name and workspace path.
 
