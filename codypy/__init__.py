@@ -21,6 +21,7 @@ from .config import (
     get_configs,
     get_debug_map,
 )
+from .context import append_paths
 from .server_info import AuthStatus, CodyAgentSpecs, CodyLLMSiteConfiguration
 
 __all__ = [
@@ -47,4 +48,5 @@ __all__ = [
     "MAGENTA",
     "CYAN",
     "WHITE",
+    "append_paths",
 ]

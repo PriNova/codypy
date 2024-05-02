@@ -5,6 +5,7 @@ from typing import Any, AsyncGenerator, Dict, Tuple
 import pydantic_core as pd
 
 from codypy.config import Configs
+from codypy.logger import log_message
 
 MESSAGE_ID = 1
 
@@ -266,8 +267,19 @@ async def request_response(
     """
     await _send_jsonrpc_request(writer, method_name, params)
     async for response in _handle_server_respones(reader):
+        recieved_method_name = (
+            response["method"] if await _has_method(response) else None
+        )
+        if recieved_method_name:
+            if (
+                recieved_method_name in debug_method_map
+                and debug_method_map[recieved_method_name]
+            ):
+                log_message("Messaging: request_response: ", f"{response}")
+            if recieved_method_name not in debug_method_map:
+                log_message("Messaging: request_response: ", f"{response}")
+
         if is_debugging and await _has_method(response):
-            recieved_method_name = response["method"]
             if (
                 recieved_method_name in debug_method_map
                 and debug_method_map[recieved_method_name]
@@ -277,6 +289,7 @@ async def request_response(
                 print(f"Response: \n\n{response}\n")
 
         if response and await _has_result(response):
+            log_message("Messaging: request_response: ", response)
             if is_debugging:
                 print(f"Result: \n\n{response}\n")
 

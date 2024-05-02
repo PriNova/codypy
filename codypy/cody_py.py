@@ -5,6 +5,7 @@ from asyncio.subprocess import Process
 from typing import Any, Self
 
 from codypy.client_info import AgentSpecs, Models
+from codypy.logger import log_message
 from codypy.utils import (
     _check_for_binary_file,
     _download_binary_to_path,
@@ -20,7 +21,7 @@ class CodyServer:
     async def init(
         binary_path: str,
         version: str,
-        use_tcp: bool = True,  # default because of ca-certificate verification
+        use_tcp: bool = False,  # default because of ca-certificate verification
         is_debugging: bool = False,
     ) -> Self:
         cody_binary = ""
@@ -32,6 +33,10 @@ class CodyServer:
                 binary_path, "cody-agent", version
             )
             if not has_agent_binary:
+                log_message(
+                    "CodyServer: init:",
+                    f"WARNING: The Cody Agent binary does not exist at the specified path: {binary_path}",
+                )
                 print(
                     f"{YELLOW}WARNING: The Cody Agent binary does not exist at the specified path: {binary_path}{RESET}"
                 )
@@ -42,6 +47,10 @@ class CodyServer:
                     binary_path, "cody-agent", version
                 )
                 if not is_completed:
+                    log_message(
+                        "CodyServer: init:",
+                        "ERROR: Failed to download the Cody Agent binary.",
+                    )
                     print(
                         f"{RED}ERROR: Failed to download the Cody Agent binary.{RESET}"
                     )
@@ -76,6 +85,10 @@ class CodyServer:
         Returns the reader and writer streams for the agent connection.
         """
         if not test_against_node_source and self.cody_binary == "":
+            log_message(
+                "CodyServer: _create_server_connection:",
+                "ERROR: The Cody Agent binary path is empty.",
+            )
             print(
                 f"{RED}You need to specify the BINARY_PATH to an absolute path to the agent binary or to the index.js file. Exiting...{RESET}"
             )
@@ -109,12 +122,20 @@ class CodyServer:
         self._writer = self._process.stdin
 
         if not self.use_tcp:
+            log_message(
+                "CodyServer: _create_server_connection:",
+                "Created a stdio connection to the Cody agent.",
+            )
             if self.is_debugging:
                 print(f"{YELLOW}--- stdio connection ---{RESET}")
             self._reader = self._process.stdout
             self._writer = self._process.stdin
 
         else:
+            log_message(
+                "CodyServer: _create_server_connection:",
+                "Created a TCP connection to the Cody agent.",
+            )
             if self.is_debugging:
                 print(f"{YELLOW}--- TCP connection ---{RESET}")
             retry: int = 0
@@ -125,6 +146,10 @@ class CodyServer:
                         "localhost", 3113
                     )
                     if self._reader is not None and self._writer is not None:
+                        log_message(
+                            "CodyServer: _create_server_connection:",
+                            "Connected to server: localhost:3113",
+                        )
                         print(f"{YELLOW}Connected to server: localhost:3113{RESET}\n")
                         break
 
@@ -133,6 +158,10 @@ class CodyServer:
                     await asyncio.sleep(1)  # Retry after a short delay
                     retry += 1
             if retry == retry_attempts:
+                log_message(
+                    "CodyServer: _create_server_connection:",
+                    "Could not connect to server. Exiting...",
+                )
                 print(f"{RED}Could not connect to server. Exiting...{RESET}")
                 sys.exit(1)
 
@@ -163,11 +192,23 @@ class CodyServer:
         )
 
         cody_agent_specs: CodyAgentSpecs = CodyAgentSpecs.model_validate(response)
+        log_message(
+            "CodyServer: initialize_agent:",
+            f"Agent Info: {cody_agent_specs}",
+        )
         if is_debugging:
             print(f"Agent Info: {cody_agent_specs}\n")
         if cody_agent_specs.authenticated:
+            log_message(
+                "CodyServer: initialize_agent:",
+                "Server is authenticated.",
+            )
             print(f"{YELLOW}--- Server is authenticated ---{RESET}")
         else:
+            log_message(
+                "CodyServer: initialize_agent:",
+                "Server is not authenticated.",
+            )
             print(f"{RED}--- Server is not authenticated ---{RESET}")
             await self.cleanup_server()
             sys.exit(1)
@@ -177,6 +218,7 @@ class CodyServer:
         """
         Cleans up the server connection by sending a "shutdown" request to the server and terminating the server process if it is still running.
         """
+        log_message("CodyServer: cleanup_server:", "Cleanup Server...")
         await _send_jsonrpc_request(self._writer, "shutdown", None)
         if self._process.returncode is None:
             self._process.terminate()
@@ -367,7 +409,6 @@ class CodyAgent:
         message,
         enhanced_context: bool = True,
         show_context_files: bool = False,
-        debug_method_map=debug_method_map,
         context_files=None,
         is_debugging: bool = False,
     ) -> str:
@@ -383,7 +424,7 @@ class CodyAgent:
         Returns:
             str: The response from the Cody server, formatted as a string with the speaker and response.
         """
-
+        debug_method_map["webview/postMessage"] = False
         if context_files is None:
             context_files = []
         if message == "/quit":
@@ -413,8 +454,13 @@ class CodyAgent:
             result, show_context_files, is_debugging
         )
         if speaker == "" or response == "":
+            log_message(
+                "CodyAgent: chat:",
+                f"Failed to submit chat message: {result}",
+            )
+            debug_method_map["webview/postMessage"] = True
             return f"{RED}--- Failed to submit chat message ---{RESET}"
-
+        debug_method_map["webview/postMessage"] = True
         return (
             f"{BLUE}{speaker.capitalize()}{RESET}: {response}\n",
             context_files_response,

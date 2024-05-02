@@ -1,8 +1,9 @@
-venv
-bin
+/venv
+/bin
 .env
 .cody
-__pycache__
+**/__pycache__
 codypy.egg-info/
-tests/
+**/tests
 .mypy_cache/
+/logs
