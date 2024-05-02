@@ -411,7 +411,7 @@ class CodyAgent:
         show_context_files: bool = False,
         context_files=None,
         is_debugging: bool = False,
-    ) -> str:
+    ):
         """
         Sends a chat message to the Cody server and returns the response.
 
@@ -462,7 +462,7 @@ class CodyAgent:
             return f"{RED}--- Failed to submit chat message ---{RESET}"
         debug_method_map["webview/postMessage"] = True
         return (
-            f"{BLUE}{speaker.capitalize()}{RESET}: {response}\n",
+            response,
             context_files_response,
         )
 

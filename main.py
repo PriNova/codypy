@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from codypy.client_info import AgentSpecs, Models
 from codypy.cody_py import CodyAgent, CodyServer
-from codypy.config import GREEN, RESET, YELLOW  # , debug_method_map
+from codypy.config import BLUE, GREEN, RESET, YELLOW  # , debug_method_map
 from codypy.context import append_paths
 from codypy.logger import log_message, setup_logger
 
@@ -97,7 +97,7 @@ async def main():
         )
         if response == "":
             break
-        print(response)
+        print(f"{BLUE}Assistant{RESET}: {response}\n")
         print("--- Context Files ---")
         if context_files_response:
             for context in context_files_response:
