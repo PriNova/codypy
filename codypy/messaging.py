@@ -1,13 +1,16 @@
 import asyncio
+import logging
 from json import JSONDecodeError
 from typing import Any, AsyncGenerator, Dict, Tuple
 
 import pydantic_core as pd
 
 from codypy.config import Configs
-from codypy.logger import log_message
 
 MESSAGE_ID = 1
+
+
+logger = logging.getLogger(__name__)
 
 
 async def _send_jsonrpc_request(
@@ -265,6 +268,7 @@ async def request_response(
     Returns:
         Any: The result of the JSON-RPC request, or None if no result is available.
     """
+    logger.debug("Sending command: %s - %s", method_name, params)
     await _send_jsonrpc_request(writer, method_name, params)
     async for response in _handle_server_respones(reader):
         recieved_method_name = (
@@ -275,9 +279,9 @@ async def request_response(
                 recieved_method_name in debug_method_map
                 and debug_method_map[recieved_method_name]
             ):
-                log_message("Messaging: request_response: ", f"{response}")
+                logger.debug("Messaging: request_response: %s", response)
             if recieved_method_name not in debug_method_map:
-                log_message("Messaging: request_response: ", f"{response}")
+                logger.debug("Messaging: request_response: %s", response)
 
         if is_debugging and await _has_method(response):
             if (
@@ -289,7 +293,7 @@ async def request_response(
                 print(f"Response: \n\n{response}\n")
 
         if response and await _has_result(response):
-            log_message("Messaging: request_response: ", response)
+            logger.info("Messaging: request_response: %s", response)
             if is_debugging:
                 print(f"Result: \n\n{response}\n")
 

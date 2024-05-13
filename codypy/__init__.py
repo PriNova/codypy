@@ -22,7 +22,6 @@ from .config import (
     get_debug_map,
 )
 from .context import append_paths
-from .logger import log_message, setup_logger
 from .server_info import AuthStatus, CodyAgentSpecs, CodyLLMSiteConfiguration
 
 __all__ = [
@@ -50,6 +49,4 @@ __all__ = [
     "CYAN",
     "WHITE",
     "append_paths",
-    "setup_logger",
-    "log_message",
 ]

@@ -25,5 +25,8 @@ dev = [
 documentation = "https://github.com/PriNova/codypy/blob/main/README.md"
 repository = "https://github.com/PriNova/codypy"
 
+[project.scripts]
+codypy = "codypy.cli:main"
+
 [tool.isort]
 profile = "black"
