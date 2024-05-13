@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class CodyLLMSiteConfiguration(BaseModel):
@@ -35,3 +37,32 @@ class CodyAgentSpecs(BaseModel):
     codyEnabled: bool | None = None
     codyVersion: str | None = None
     authStatus: AuthStatus | None = None
+
+
+class Message(BaseModel):
+    text: str
+    speaker: Literal["human", "assistant"]
+    contextFiles: list | None = None
+
+
+class Transcript(BaseModel):
+    type_name: Literal["transcript"] = Field(
+        validation_alias=AliasChoices("type_name", "type")
+    )
+    messages: list[Message]
+    isMessageInProgress: bool
+    chatID: str
+
+    @property
+    def question(self) -> str:
+        """Return the last 'human' message text"""
+        last_msg = self.messages[-2]
+        assert last_msg.speaker == "human"
+        return last_msg.text
+
+    @property
+    def answer(self) -> str:
+        """Return the last 'assistant' message text"""
+        last_msg = self.messages[-1]
+        assert last_msg.speaker == "assistant"
+        return last_msg.text
