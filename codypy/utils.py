@@ -1,7 +1,11 @@
 import os
 import platform
+from typing import Any
 
 import requests
+
+from codypy.config import Configs
+from codypy.messaging import request_response
 
 
 async def _get_platform_arch() -> str | None:
@@ -138,3 +142,24 @@ async def _download_binary_to_path(
     except requests.exceptions.ConnectionError as err:
         print(f"Error connecting to server: {err}")
         return False
+
+
+async def get_remote_repositories(
+    reader, writer, id: str, configs: Configs, debug_method_map
+) -> Any:
+    return await request_response(
+        "chat/remoteRepos", id, debug_method_map, reader, writer, configs
+    )
+
+
+async def receive_webviewmessage(
+    reader, writer, params, configs: Configs, debug_method_map
+) -> Any:
+    return await request_response(
+        "webview/receiveMessage",
+        params,
+        debug_method_map,
+        reader,
+        writer,
+        configs,
+    )

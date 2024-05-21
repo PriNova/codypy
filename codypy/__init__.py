@@ -5,7 +5,6 @@ from .client_info import (
     Models,
     ModelSpec,
 )
-from .cody_py import CodyAgent, CodyServer
 from .config import (
     BLACK,
     BLUE,

@@ -90,7 +90,7 @@ class Models(Enum):
         model_id="anthropic/claude-2.1",
     )
     Claude1_2Instant = ModelSpec(
-        model_name="Claude 1.2 Instant",
+        model_name="Claude Instant",
         model_id="anthropic/claude-instant-1.2",
     )
     Claude3Haiku = ModelSpec(

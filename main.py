@@ -3,11 +3,12 @@ import os
 
 from dotenv import load_dotenv
 
+from codypy.agent import CodyAgent
 from codypy.client_info import AgentSpecs, Models
-from codypy.cody_py import CodyAgent, CodyServer
 from codypy.config import BLUE, GREEN, RESET, YELLOW  # , debug_method_map
 from codypy.context import append_paths
 from codypy.logger import log_message, setup_logger
+from codypy.server import CodyServer
 
 load_dotenv()
 SRC_ACCESS_TOKEN = os.getenv("SRC_ACCESS_TOKEN")
@@ -42,15 +43,14 @@ async def main():
     # Initialize the CodyAgent with the specified agent_specs and debug_method_map.
     log_message("main:", "--- Initialize Agent ---")
     print(f"{YELLOW}--- Initialize Agent ---{RESET}")
-    cody_agent: CodyAgent = await cody_server.initialize_agent(
-        agent_specs=agent_specs, is_debugging=False
-    )
+    cody_agent: CodyAgent = CodyAgent(cody_server=cody_server, agent_specs=agent_specs)
+    await cody_agent.initialize_agent(is_debugging=False)
 
     # Retrieve and print the available chat models
     log_message("main:", "--- Retrieve Chat Models ---")
     print(f"{YELLOW}--- Retrieve Chat Models ---{RESET}")
     models = await cody_agent.get_models(model_type="chat", is_debugging=False)
-
+    print(models)
     # Create a new chat with the CodyAgent
     log_message("main:", "--- Create new chat ---")
     print(f"{YELLOW}--- Create new chat ---{RESET}")
