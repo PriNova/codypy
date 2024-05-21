@@ -30,3 +30,8 @@ codypy = "codypy.cli:main"
 
 [tool.isort]
 profile = "black"
+
+[tool.pylint.messages_control]
+disable = [
+    "R0801",  # "duplicate code" warning
+]

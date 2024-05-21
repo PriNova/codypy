@@ -1,6 +1,19 @@
-import logging
-from typing import Self
+"""
+CodyPy Agent implementation
+---------------------------
 
+This module contains the CodyAgent class implementation.
+The object takes care of all RPC communication via a CodyServer
+instance.
+"""
+
+import logging
+import warnings
+from datetime import UTC, datetime
+from typing import Any, Self
+
+from .chat import Chat
+from .models import AgentSpecs, Message
 from .server import CodyServer
 
 logger = logging.getLogger(__name__)
@@ -9,14 +22,15 @@ logger = logging.getLogger(__name__)
 class CodyAgent:
     """Cody agent implementing various RPC functions"""
 
-    def __init__(self, server: CodyServer):
+    def __init__(self, server: CodyServer, agent_specs: AgentSpecs):
         self.server: CodyServer = server
+        self.agent_specs: AgentSpecs = agent_specs
         self.repos: dict = {}
         self.chats: list[Chat] = []
         self.root_chat: Chat | None = None
 
     @classmethod
-    async def init(
+    async def init(  # pylint: disable=too-many-arguments
         cls,
         binary_path: str,
         access_token: str = "",
@@ -53,6 +67,7 @@ class CodyAgent:
         await server.process_manager.create_process()
         server.init_rpc_driver()
         if not agent_specs:
+            logger.debug("Initializing AgentSpecs with defaults")
             agent_specs = AgentSpecs(
                 extensionConfiguration={
                     "accessToken": access_token,
@@ -60,7 +75,39 @@ class CodyAgent:
                 },
             )
         await server.initialize(agent_specs=agent_specs)
-        return cls(server=server)
+        return cls(server=server, agent_specs=agent_specs)
+
+    async def initialize_agent(self, is_debugging: bool | None = False) -> None:
+        """Initializes the Cody agent by sending an "initialize" request
+        to the agent and handling the response.
+
+        The method takes in agent specifications, a debug method map,
+        and a boolean flag indicating whether debugging is enabled. It
+        returns the initialized CodyAgentSpecs if the server is
+        authenticated, otherwise raise exception.
+
+        The method first creates a callback function that validates the
+        response from the "initialize" request, prints the agent
+        information if debugging is enabled, and checks if the server is
+        authenticated. If the server is not authenticated, the method
+        calls cleanup_server and returns None.
+
+        Finally, the method calls request_response to send the "initialize"
+        request with the agent specifications, the debug method map, the
+        reader and writer streams, the debugging flag, and the callback
+        function.
+        """
+        warnings.warn(
+            "initialize_agent() method will be removed. Use CodyAgent.init() instead",
+            DeprecationWarning,
+        )
+        if is_debugging is not None:
+            warnings.warn(
+                "`is_debugging` is deprecated and ignored. The binary debug "
+                "flag is controlled by the configured logging level.",
+                DeprecationWarning,
+            )
+        await self.server.initialize(agent_specs=self.agent_specs)
 
     async def close(self):
         """Cleanup Cody server gracfully"""

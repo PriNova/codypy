@@ -1,28 +1,30 @@
 """
-codypy.messaging
+CodyPy Agent implementation
+---------------------------
 
-Contains the RCPClient class to read/write jsonrpc from/to the agent
-socket
+This module contains the RCPClient class implementation.
+The object is responsible to handle JsonRPC read/write operations via
+the connected reader/writer sockets.
 """
 
 import asyncio
 import logging
-from typing import Any, AsyncGenerator, Dict, Tuple
+from typing import Any, AsyncGenerator, Dict
 
 import pydantic_core as pd
 
 logger = logging.getLogger(__name__)
 
 
-class RPCClient:
+class RPCDriver:
     """Class to handle all RPC communications"""
 
-    def __init__(self):
-        self.message_id = 1
-        self.reader: asyncio.StreamReader | None = None
-        self.writer: asyncio.StreamWriter | None = None
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        self.message_id: int = 1
+        self.reader: asyncio.StreamReader = reader
+        self.writer: asyncio.StreamWriter = writer
 
-    async def _send_jsonrpc_request(
+    async def send_jsonrpc_request(
         self, method: str, params: Dict[str, Any] | None
     ) -> None:
         """Sends a JSON-RPC request to the server
@@ -73,7 +75,7 @@ class RPCClient:
         )
         return json_data.decode("utf-8")
 
-    async def _handle_server_respones(self) -> AsyncGenerator[Dict[str, Any], Any]:
+    async def handle_server_respones(self) -> AsyncGenerator[Dict[str, Any], Any]:
         """
         Asynchronously handles server responses by reading JSON-RPC messages
         from the provided `asyncio.StreamReader`.
@@ -93,64 +95,6 @@ class RPCClient:
         except asyncio.TimeoutError:
             yield pd.from_json("{}")
 
-    @staticmethod
-    async def _show_last_message(
-        messages: Dict[str, Any], show_context_files: bool
-    ) -> Tuple[str, str, list[str]]:
-        """
-        Retrieves the speaker and text of the last message in a transcript.
-
-        Args:
-            messages (Dict[str, Any]): A dictionary containing the message history.
-
-        Returns:
-            Tuple[str, str]: A tuple containing the speaker and text of the last message.
-        """
-        if messages is not None and messages["type"] == "transcript":
-            last_message = messages["messages"][-1:][0]
-            logger.debug(last_message)
-            speaker: str = last_message["speaker"]
-            text: str = last_message["text"]
-
-            context_file_results = []
-            if show_context_files:
-                context_files: list[any] = messages["messages"]
-
-                for context_result in context_files:
-                    res = (
-                        context_result["contextFiles"]
-                        if "contextFiles" in context_result
-                        else []
-                    )
-                    for reso in res:
-                        uri = reso["uri"]["path"]
-                        if "range" in reso:
-                            rng = reso["range"]
-                            rng_start = rng["start"]["line"]
-                            rng_end = rng["end"]["line"]
-                            context_file_results.append(f"{uri}:{rng_start}-{rng_end}")
-
-            return speaker, text, context_file_results
-        return ("", "", [])
-
-    @staticmethod
-    async def _show_messages(message) -> None:
-        """
-        Prints the speaker and text of each message in a transcript.
-
-        Args:
-            message (dict): A dictionary containing the message history, with a "type" key set to
-                            "transcript" and a "messages" key containing
-                            a list of message dictionaries.
-        Returns:
-            None
-        """
-        if message["type"] == "transcript":
-            for msg in message["messages"]:
-                if configs.IS_DEBUGGING:
-                    output = f"{msg['speaker']}: {msg['text']}\n"
-                    print(output)
-
     async def request_response(
         self,
         method_name: str,
@@ -167,8 +111,9 @@ class RPCClient:
             Any: The result of the JSON-RPC request, or None if no result is available.
         """
         logger.debug("Sending command: %s - %s", method_name, params)
-        await self._send_jsonrpc_request(method_name, params)
-        async for response in self._handle_server_respones():
+        await self.send_jsonrpc_request(method_name, params)
+        async for response in self.handle_server_respones():
+            logger.debug("Response: %s", response)
             if response and "result" in response:
                 logger.debug("Messaging: request_response: %s", response)
                 return response["result"]

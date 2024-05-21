@@ -6,41 +6,43 @@ import argparse
 import asyncio
 import logging
 import os
+import sys
 
-from .client_info import AgentSpecs
-from .cody_py import CodyAgent, CodyServer
-from .config import debug_method_map
+from .agent import CodyAgent
+from .chat import Chat
+from .models import AgentSpecs, Transcript
+from .utils import _download_binary_to_path
 
 
 def get_args() -> argparse.Namespace:
     """Create an argument parser"""
 
     parser = argparse.ArgumentParser(description="Cody Agent Python CLI")
-    parser.add_argument(
-        "chat", help="Initialize the chat conversation", action="store_true"
-    )
-    parser.add_argument(
-        "download", help="Download the cody-agent binary", action="store_true"
-    )
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    subparsers.add_parser("ask", help="Ask a question")
+    subparsers.add_parser("chat", help="Start a chat session")
+    subparsers.add_parser("download", help="Download resources from the server")
+
     parser.add_argument(
         "--binary_path",
         type=str,
-        required=False,
         default=os.getenv("BINARY_PATH"),
         help="The path to the Cody Agent binary. (Required)",
     )
     parser.add_argument(
         "--access_token",
         type=str,
-        required=False,
         default=os.getenv("SRC_ACCESS_TOKEN"),
-        help="The Sourcegraph access token. (Needs to be exported as SRC_ACCESS_TOKEN) (Required)",
+        help=(
+            "The Sourcegraph access token. Can be specified as "
+            "SRC_ACCESS_TOKEN envvar (Required)"
+        ),
     )
     parser.add_argument(
         "-m",
         "--message",
         type=str,
-        required=True,
         help="The chat message to send. (Required)",
     )
     parser.add_argument(
@@ -53,14 +55,20 @@ def get_args() -> argparse.Namespace:
         "--endpoint",
         type=str,
         default=os.getenv("SRC_ENDPOINT", "https://sourcegraph.com"),
-        help="Sourcegraph endpoint (Default: https://sourcegraph.com)",
+        help=(
+            "Sourcegraph endpoint Can be specified as SRC_ENDPOINT envvar "
+            "(Default: https://sourcegraph.com)"
+        ),
     )
     parser.add_argument(
         "-ec",
         "--enhanced-context",
         type=bool,
         default=True,
-        help="Use enhanced context if in a git repo  (needs remote repo configured). Default=True",
+        help=(
+            "Use enhanced context if in a git repo "
+            "(needs remote repo configured). Default=True"
+        ),
     )
     parser.add_argument(
         "-sc",
@@ -79,12 +87,8 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-async def chat(args: argparse.Namespace):
-    """Send a chat message to cody and retrieve the response"""
-
-    # Create a CodyServer instance
-    cody_server: CodyServer = CodyServer(cody_binary=args.binary_path)
-    await cody_server.connect()
+async def create_chat(args: argparse.Namespace) -> Chat:
+    """Create a Chat session"""
 
     # Create an AgentSpecs instance with the specified workspace root URI
     # and extension configuration.
@@ -97,27 +101,72 @@ async def chat(args: argparse.Namespace):
             "customConfiguration": {},
         },
     )
-    cody_agent: CodyAgent = await cody_server.initialize_agent(
-        agent_specs=agent_specs, is_debugging=False
+    # Initialize Agent
+    cody_agent: CodyAgent = await CodyAgent.init(
+        args.binary_path, agent_specs=agent_specs
     )
+    # Create a new Chat session
+    chat: Chat = await cody_agent.new_chat()
+    return chat
 
-    await cody_agent.new_chat(is_debugging=False)
 
-    debug_method_map["webview/postMessage"] = False
-    response = await cody_agent.chat(
-        message=args.message,
-        enhanced_context=args.enhanced_context,
-        show_context_files=args.show_context,
-        is_debugging=False,
-    )
-    if response == "":
-        return
-    print(response)
+def ask_question(args: argparse.Namespace) -> None:
+    """Ask a single question from Cody synchronously"""
+    if not args.binary_path:
+        print(
+            "error: argument binary_path: argument must be set "
+            "explicitly or via BINARY_PATH envvar"
+        )
+        sys.exit(1)
+    if not args.access_token:
+        print(
+            "error: argument access_token: argument must be set "
+            "explicitly or via SRC_ACCESS_TOKEN envvar"
+        )
+        sys.exit(1)
+    if not args.message:
+        print("error: argument message: argument must be set")
+        sys.exit(1)
 
-    debug_method_map["webview/postMessage"] = True
+    loop = asyncio.new_event_loop()
+    chat: Chat = loop.run_until_complete(create_chat(args))
+    try:
+        reply: Transcript = loop.run_until_complete(chat.ask(args.message))
+        print(f"Q: {reply.question}\nA: {reply.answer}")
+    finally:
+        loop.run_until_complete(chat.agent.close())
 
-    await cody_server.cleanup_server()
-    return None
+
+def start_chat(args: argparse.Namespace) -> None:
+    """Start a chat session with Cody synchronously"""
+    if not args.binary_path:
+        print(
+            "error: argument binary_path: argument must be set "
+            "explicitly or via BINARY_PATH envvar"
+        )
+        sys.exit(1)
+    if not args.access_token:
+        print(
+            "error: argument access_token: argument must be set "
+            "explicitly or via SRC_ACCESS_TOKEN envvar"
+        )
+        sys.exit(1)
+    loop = asyncio.new_event_loop()
+    chat: Chat = loop.run_until_complete(create_chat(args))
+    print("Write your questions below. To exit type 'exit' or hit CTRL^C")
+    try:
+        while True:
+            if question := input("Q: "):
+                if question.lower().startswith("exit"):
+                    break
+                reply: Transcript = loop.run_until_complete(chat.ask(question))
+                print(f"A: {reply.answer}")
+            else:
+                print("No question asked. Try entering something or hit CTRL^C")
+    except (KeyboardInterrupt, EOFError):
+        pass
+    finally:
+        loop.run_until_complete(chat.agent.close())
 
 
 def main():
@@ -127,7 +176,14 @@ def main():
         format="%(asctime)s %(levelname)s %(filename)s:%(funcName)s - %(message)s",
         level=getattr(logging, args.loglevel),
     )
-    asyncio.run(chat(args))
+    if args.command == "download":
+        _download_binary_to_path(
+            binary_path=".", cody_name="cody-agent", version="0.0.5b"
+        )
+    if args.command == "ask":
+        ask_question(args)
+    if args.command == "chat":
+        start_chat(args)
 
 
 if __name__ == "__main__":
