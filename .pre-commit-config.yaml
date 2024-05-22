@@ -1,3 +1,6 @@
+ci:
+  skip: [pylint]
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
@@ -16,3 +19,13 @@ repos:
     rev: 5.13.2
     hooks:
       - id: isort
+
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: pylint
+        language: system
+        types: [python]
+        args:
+          - --rcfile=pyproject.toml

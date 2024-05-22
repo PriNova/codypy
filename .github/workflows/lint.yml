@@ -3,6 +3,10 @@ name: Lint code
 
 on: [push, pull_request]
 
+env:
+  # Pylint does not work via pre-commit in CI
+  SKIP: pylint
+
 permissions:
   contents: read
 
@@ -18,3 +22,5 @@ jobs:
         python-version: "3.x"
     - name: Run pre-commit
       uses: pre-commit/action@v3.0.1
+    - name: GitHub Action for pylint
+      uses: cclauss/GitHub-Action-for-pylint@0.7.0
