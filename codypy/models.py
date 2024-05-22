@@ -9,7 +9,7 @@ configuration items.
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Dict, Literal
+from typing import Any, Dict, Literal, Union
 
 from pydantic import AliasChoices, BaseModel, Field, ValidationError, validator
 
@@ -184,6 +184,205 @@ class CodyAgentSpecs(BaseModel):
     authStatus: AuthStatus | None = None
 
 
+class Position(BaseModel):
+    """Model for position in context files"""
+
+    line: int
+    character: int
+
+
+class Range(BaseModel):
+    """Model for range in context files"""
+
+    start: Position
+    end: Position
+
+
+class Uri(BaseModel):
+    """Model for context file URI"""
+
+    mid: int = Field(validation_alias=AliasChoices("mid", "$mid"))
+    external: str
+    path: str
+    scheme: str
+    authority: str
+    query: str
+
+
+# Source: https://github.com/sourcegraph/cody/blob/main/lib/shared/src/codebase-context/messages.ts
+ContextItemSource = Literal[
+    "embeddings",  # From embeddings search
+    "user",  # Explicitly @-mentioned by the user in chat
+    "keyword",  # From local keyword search
+    "editor",  # From the current editor state and open tabs/documents
+    "filename",
+    "search",  # From symf search
+    "unified",  # Remote search
+    "selection",  # Selected code from the current editor
+    "terminal",  # Output from the terminal
+    "uri",  # From URI
+    "package",  # From a package repository
+    "history",  # From source control history
+    "github",  # From Github API
+]
+
+
+class ContextItemCommon(BaseModel):
+    """Model for generic Context item objects
+
+    :param uri: Uri object
+        The URI of the document (such as a file) where this context
+        resides.
+    :param range: (optional) Range object
+        If only a subset of a file is included as context, the range of
+        that subset.
+    :param context: (optional) String
+        The content, either the entire document or the range subset.
+    :param repoName: (optional) String
+    :param revision: (optional) String
+    :param title: (optional) String
+        For anything other than a file or symbol, the title to display
+        (e.g., "Terminal Output").
+    :param source: (optional) String Literal
+        The source of this context item.
+    :param size: (optional) Integer
+        The token count of the item's content.
+    :param isIgnored: (optional) Bool
+        Whether the item is excluded by Cody Ignore.
+    :param isTooLarge: (optional) Bool
+        Whether the content of the item is too large to be included as
+        context.
+    :param provider: (optional) String
+        The ID of the {@link ContextMentionProvider} that supplied this
+        context item (or `undefined` if from a built-in context source
+        such as files and symbols).
+    """
+
+    uri: Uri
+    range: Range | None = None
+    content: str = ""
+    repoName: str = ""
+    revision: str = ""
+    title: str = ""
+    source: ContextItemSource | None = None
+    size: int | None = None
+    isIgnored: bool | None = None
+    isTooLarge: bool | None = None
+    provider: str = ""
+
+
+class ContextItemFile(ContextItemCommon):
+    """Model for File type context item
+
+    A file (or a subset of a file given by a range) that is included as
+    context in a chat message.
+    """
+
+    type: Literal["file"]
+
+
+class ContextItemSymbol(ContextItemCommon):
+    """Model for Symbol type context item
+
+    A symbol (which is a range within a file) that is included as
+    context in a chat message.
+
+    :param type: String Literal, should be always "symbol"
+    :param symbolName: String
+        The name of the symbol, used for presentation only
+        (not semantically meaningful).
+    :param kind: String Literal
+        The kind of symbol, used for presentation only
+        (not semantically meaningful).
+    """
+
+    type: Literal["symbol"]
+    symbolName: str
+    kind: Literal["class", "function", "method"]
+
+
+class ContextItemPackage(ContextItemCommon):
+    """Model for Package type context item
+
+    A package repository that is included as context in a chat message.
+
+    :param type: String Literal, should be always "package"
+    :param repoID: String, the repository id for this package.
+    :param title: String, the title for this package.
+    :param ecosystem: String, the ecosystem for this package.
+    :param name: String, the name for this package.
+    """
+
+    type: Literal["package"]
+    repoID: str
+    title: str
+    ecosystem: str
+    name: str
+
+
+class ContextItemGithubPullRequest(ContextItemCommon):
+    """Model for GithubPullRequest type context item
+
+    A Github pull request that is included as context in a chat message.
+
+    :param type: String Literal, should be always "github_pull_request"
+    :param owner: String, the owner of the repository.
+    :param repoName: String, the name of the repository.
+    :param pullNumber: Int, the number for this pull request.
+    :param title: String, the title of this pull request.
+    """
+
+    type: Literal["github_pull_request"]
+    owner: str
+    repoName: str
+    pullNumber: int
+    title: str
+
+
+class ContextItemGithubIssue(ContextItemCommon):
+    """Model for GithubIssue type context item
+
+    A Github issue that is included as context in a chat message.
+
+    :param type: String Literal, should be always "github_issue"
+    :param owner: String, the owner of the repository.
+    :param repoName: String, the name of the repository.
+    :param issueNumber: Int, the number for this issue.
+    :param title: String, the title of this issue.
+    """
+
+    type: Literal["github_issue"]
+    owner: str
+    repoName: str
+    issueNumber: int
+    title: str
+
+
+class ContextItemOpenCtx(ContextItemCommon):
+    """Model for OpenCtx type context item
+
+    An OpenCtx context item returned from a provider.
+    """
+
+    type: Literal["openctx"]
+    provider: Literal["openctx"]
+    title: str
+    uri: Uri
+    providerUri: str
+    description: str = ""
+    data: Any | None = None
+
+
+ContextItem = Union[
+    ContextItemFile,
+    ContextItemSymbol,
+    ContextItemPackage,
+    ContextItemGithubPullRequest,
+    ContextItemGithubIssue,
+    ContextItemOpenCtx,
+]
+
+
 class Message(BaseModel):
     """Chat Message model
 
@@ -197,7 +396,7 @@ class Message(BaseModel):
 
     text: str
     speaker: Literal["human", "assistant"]
-    contextFiles: list | None = None
+    contextFiles: list[ContextItem] | None = None
 
 
 class Transcript(BaseModel):
