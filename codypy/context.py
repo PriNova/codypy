@@ -1,7 +1,8 @@
+import logging
 import os
 from dataclasses import dataclass
 
-from codypy.logger import log_message
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -31,7 +32,7 @@ def append_paths(*paths: str) -> list[Context]:
     """
     for path in paths:
         if not os.path.exists(path):
-            log_message("append_paths", f"WARNING: The path {path} does not exist.")
+            logger.warning("The path %s does not exist", path)
 
         uri = Uri()
         uri.fsPath = path

@@ -145,20 +145,18 @@ async def _download_binary_to_path(
 
 
 async def get_remote_repositories(
-    reader, writer, id: str, configs: Configs, debug_method_map
+    reader,
+    writer,
+    id: str,
+    configs: Configs,
 ) -> Any:
-    return await request_response(
-        "chat/remoteRepos", id, debug_method_map, reader, writer, configs
-    )
+    return await request_response("chat/remoteRepos", id, reader, writer, configs)
 
 
-async def receive_webviewmessage(
-    reader, writer, params, configs: Configs, debug_method_map
-) -> Any:
+async def receive_webviewmessage(reader, writer, params, configs: Configs) -> Any:
     return await request_response(
         "webview/receiveMessage",
         params,
-        debug_method_map,
         reader,
         writer,
         configs,

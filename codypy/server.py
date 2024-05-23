@@ -1,10 +1,13 @@
 import asyncio
+import logging
 import os
-import sys
 from asyncio.subprocess import Process
 
-from codypy.config import RED, RESET, YELLOW
-from codypy.logger import log_message
+from codypy.exceptions import (
+    AgentBinaryDownloadError,
+    AgentBinaryNotFoundError,
+    ServerTCPConnectionError,
+)
 from codypy.messaging import _send_jsonrpc_request
 from codypy.utils import (
     _check_for_binary_file,
@@ -12,20 +15,21 @@ from codypy.utils import (
     _format_binary_name,
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def _get_cody_binary(binary_path: str, version: str) -> str:
     has_agent_binary = await _check_for_binary_file(binary_path, "cody-agent", version)
     if not has_agent_binary:
-        print(
-            f"{YELLOW}WARNING: The Cody Agent binary does not exist at the specified path: {binary_path}{RESET}"
+        logger.warning(
+            "Cody Agent binary does not exist at the specified path: %s", binary_path
         )
-        print(f"{YELLOW}WARNING: Start downloading the Cody Agent binary...{RESET}")
+        logger.warning("Start downloading the Cody Agent binary")
         is_completed = await _download_binary_to_path(
             binary_path, "cody-agent", version
         )
         if not is_completed:
-            print(f"{RED}ERROR: Failed to download the Cody Agent binary.{RESET}")
-            sys.exit(1)
+            raise AgentBinaryDownloadError("Failed to download the Cody Agent binary")
 
     return os.path.join(binary_path, await _format_binary_name("cody-agent", version))
 
@@ -37,17 +41,15 @@ class CodyServer:
         binary_path: str,
         version: str,
         use_tcp: bool = False,  # default because of ca-certificate verification
-        is_debugging: bool = False,
     ) -> "CodyServer":
         cody_binary = await _get_cody_binary(binary_path, version)
-        cody_server = cls(cody_binary, use_tcp, is_debugging)
+        cody_server = cls(cody_binary, use_tcp)
         await cody_server._create_server_connection()
         return cody_server
 
-    def __init__(self, cody_binary: str, use_tcp: bool, is_debugging: bool) -> None:
+    def __init__(self, cody_binary: str, use_tcp: bool) -> None:
         self.cody_binary = cody_binary
         self.use_tcp = use_tcp
-        self.is_debugging = is_debugging
         self._process: Process | None = None
         self._reader: asyncio.StreamReader | None = None
         self._writer: asyncio.StreamWriter | None = None
@@ -65,17 +67,15 @@ class CodyServer:
         Returns the reader and writer streams for the agent connection.
         """
         if not test_against_node_source and self.cody_binary == "":
-            log_message(
-                "CodyServer: _create_server_connection:",
-                "ERROR: The Cody Agent binary path is empty.",
+            raise AgentBinaryNotFoundError(
+                "Cody Agent binary path is empty. You need to specify the "
+                "BINARY_PATH to an absolute path to the agent binary or to "
+                "the index.js file."
             )
-            print(
-                f"{RED}You need to specify the BINARY_PATH to an absolute path to the agent binary or to the index.js file. Exiting...{RESET}"
-            )
-            sys.exit(1)
 
+        debug = logger.getEffectiveLevel() == logging.DEBUG
         os.environ["CODY_AGENT_DEBUG_REMOTE"] = str(self.use_tcp).lower()
-        os.environ["CODY_DEBUG"] = str(self.is_debugging).lower()
+        os.environ["CODY_DEBUG"] = str(debug).lower()
 
         args = []
         binary = ""
@@ -97,59 +97,59 @@ class CodyServer:
             stdout=asyncio.subprocess.PIPE,
             env=os.environ,
         )
-
+        logger.info("Cody agent process with PID %d created", self._process.pid)
         self._reader = self._process.stdout
         self._writer = self._process.stdin
 
         if not self.use_tcp:
-            log_message(
-                "CodyServer: _create_server_connection:",
-                "Created a stdio connection to the Cody agent.",
-            )
-            if self.is_debugging:
-                print(f"{YELLOW}--- stdio connection ---{RESET}")
-            self._reader = self._process.stdout
-            self._writer = self._process.stdin
-
+            logger.info("Created a stdio connection to the Cody agent")
         else:
-            log_message(
-                "CodyServer: _create_server_connection:",
-                "Created a TCP connection to the Cody agent.",
-            )
-            if self.is_debugging:
-                print(f"{YELLOW}--- TCP connection ---{RESET}")
             retry: int = 0
             retry_attempts: int = 5
+            # TODO: Consider making this configurable
+            host: str = "localhost"
+            port: int = 3113
             for retry in range(retry_attempts):
                 try:
                     (self._reader, self._writer) = await asyncio.open_connection(
-                        "localhost", 3113
+                        host, port
                     )
                     if self._reader is not None and self._writer is not None:
-                        log_message(
-                            "CodyServer: _create_server_connection:",
-                            "Connected to server: localhost:3113",
+                        logger.info(
+                            "Created a TCP connection to the Cody agent (%s:%s)",
+                            host,
+                            port,
                         )
-                        print(f"{YELLOW}Connected to server: localhost:3113{RESET}\n")
                         break
-
                     # return reader, writer, process
-                except ConnectionRefusedError:
+                except ConnectionRefusedError as exc:
+                    # TODO: This is not the nicest way to do retry but it
+                    # keeps the logging sane. Consider refactoring.
                     await asyncio.sleep(1)  # Retry after a short delay
                     retry += 1
-            if retry == retry_attempts:
-                log_message(
-                    "CodyServer: _create_server_connection:",
-                    "Could not connect to server. Exiting...",
-                )
-                print(f"{RED}Could not connect to server. Exiting...{RESET}")
-                sys.exit(1)
+                    if retry == retry_attempts:
+                        logger.debug(
+                            "Exhausted %d retry attempts while trying to connect to %s:%s",
+                            retry_attempts,
+                            host,
+                            port,
+                        )
+                        raise ServerTCPConnectionError(
+                            "Could not connect to server: %s:%s", host, port
+                        ) from exc
+                    else:
+                        logger.debug(
+                            "Connection to %s:%s failed, retrying (%d)",
+                            host,
+                            port,
+                            retry,
+                        )
 
     async def cleanup_server(self):
         """
         Cleans up the server connection by sending a "shutdown" request to the server and terminating the server process if it is still running.
         """
-        log_message("CodyServer: cleanup_server:", "Cleanup Server...")
+        logger.info("Cleaning up Server...")
         await _send_jsonrpc_request(self._writer, "shutdown", None)
         if self._process.returncode is None:
             self._process.terminate()

@@ -1,11 +1,14 @@
 import asyncio
+import logging
 from json import JSONDecodeError
 from typing import Any, AsyncGenerator, Dict, Tuple
 
 import pydantic_core as pd
 
 from codypy.config import Configs
-from codypy.logger import log_message
+
+logger = logging.getLogger(__name__)
+stream_logger = logging.getLogger(f"{__name__}.stream")
 
 MESSAGE_ID = 1
 
@@ -152,6 +155,7 @@ async def _extraxt_method(json_response) -> Dict[str, Any] | None:
         return None
 
 
+# TODO: Remove unused function
 async def _handle_json_data(json_data, configs: Configs) -> Dict[str, Any] | None:
     """
     Handles the processing of JSON data received from a remote source.
@@ -166,37 +170,37 @@ async def _handle_json_data(json_data, configs: Configs) -> Dict[str, Any] | Non
     """
     json_response: Dict[str, Any] = pd.from_json(json_data)
     if await _has_method(json_response):
-        if configs.IS_DEBUGGING:
-            print(f"Method: {json_response['method']}\n")
-        if "params" in json_response and configs.IS_DEBUGGING:
-            print(f"Params: \n{json_response['params']}\n")
+        logger.debug(
+            "Method: %s, params: %s",
+            json_response["method"],
+            json_response.get("params"),
+        )
         return await _extraxt_method(json_response)
 
     if await _has_result(json_response):
-        if configs.IS_DEBUGGING:
-            print(f"Result: \n\n{await _extraxt_result(json_response)}\n")
-        return await _extraxt_result(json_response)
+        result = await _extraxt_result(json_response)
+        logger.debug("Result: %s", result)
+        return result
 
     return json_response
 
 
 async def _show_last_message(
-    messages: Dict[str, Any], show_context_files: bool, is_debugging: bool
+    messages: Dict[str, Any],
+    show_context_files: bool,
 ) -> Tuple[str, str, list[str]]:
     """
     Retrieves the speaker and text of the last message in a transcript.
 
     Args:
         messages (Dict[str, Any]): A dictionary containing the message history.
-        is_debugging (bool): A flag indicating whether debugging is enabled.
 
     Returns:
         Tuple[str, str]: A tuple containing the speaker and text of the last message.
     """
     if messages is not None and messages["type"] == "transcript":
         last_message = messages["messages"][-1:][0]
-        if is_debugging:
-            print(f"Last message: {last_message}\n")
+        logger.debug("Last message: %s", last_message)
         speaker: str = last_message["speaker"]
         text: str = last_message["text"]
 
@@ -237,62 +241,29 @@ async def _show_messages(message, configs: Configs) -> None:
     """
     if message["type"] == "transcript":
         for message in message["messages"]:
-            if configs.IS_DEBUGGING:
-                output = f"{message['speaker']}: {message['text']}\n"
-                print(output)
+            logger.debug("%s: %s", message["speaker"], message["text"])
 
 
-async def request_response(
-    method_name: str,
-    params,
-    debug_method_map,
-    reader,
-    writer,
-    is_debugging: bool,
-) -> Any:
+async def request_response(method_name: str, params, reader, writer) -> Any:
     """
     Sends a JSON-RPC request to a server and handles the response.
 
     Args:
         method_name (str): The name of the JSON-RPC method to call.
         params: The parameters to pass to the JSON-RPC method.
-        debug_method_map (dict): A mapping of method names to a boolean
-                                indicating whether to print the response.
         reader (asyncio.StreamReader): The reader stream to use for receiving responses.
         writer (asyncio.StreamWriter): The writer stream to use for sending requests.
-        is_debugging (bool): A flag indicating whether debugging is enabled.
 
     Returns:
         Any: The result of the JSON-RPC request, or None if no result is available.
     """
+    logger.debug("Sending command: %s - %s", method_name, params)
     await _send_jsonrpc_request(writer, method_name, params)
     async for response in _handle_server_respones(reader):
-        recieved_method_name = (
-            response["method"] if await _has_method(response) else None
-        )
-        if recieved_method_name:
-            if (
-                recieved_method_name in debug_method_map
-                and debug_method_map[recieved_method_name]
-            ):
-                log_message("Messaging: request_response: ", f"{response}")
-            if recieved_method_name not in debug_method_map:
-                log_message("Messaging: request_response: ", f"{response}")
-
-        if is_debugging and await _has_method(response):
-            if (
-                recieved_method_name in debug_method_map
-                and debug_method_map[recieved_method_name]
-            ):
-                print(f"Response: \n\n{response}\n")
-            if recieved_method_name not in debug_method_map:
-                print(f"Response: \n\n{response}\n")
-
+        if response.get("params", {}).get("isMessageInProgress"):
+            stream_logger.debug("InProgress response: %s", response)
         if response and await _has_result(response):
-            log_message("Messaging: request_response: ", response)
-            if is_debugging:
-                print(f"Result: \n\n{response}\n")
-
+            logger.debug("Response: %s", response)
             return response["result"]
 
     return None
