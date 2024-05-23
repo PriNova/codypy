@@ -1,13 +1,13 @@
 import asyncio
+import logging
 import os
 
 from dotenv import load_dotenv
 
 from codypy.agent import CodyAgent
 from codypy.client_info import AgentSpecs, Models
-from codypy.config import BLUE, GREEN, RESET, YELLOW  # , debug_method_map
+from codypy.config import BLUE, GREEN, RESET, YELLOW
 from codypy.context import append_paths
-from codypy.logger import log_message, setup_logger
 from codypy.server import CodyServer
 
 load_dotenv()
@@ -15,18 +15,22 @@ SRC_ACCESS_TOKEN = os.getenv("SRC_ACCESS_TOKEN")
 BINARY_PATH = os.getenv("BINARY_PATH")
 
 
+logger = logging.getLogger(__name__)
+
+
 async def main():
     # set the global logger
-    setup_logger("codypy", "logs")
-
-    # debug_method_map: Dict[str, Any] = await get_debug_map()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
 
     # Create a CodyServer instance and initialize it
     # with the specified binary path and debugging mode.
-    log_message("main:", "--- Create Server Connection ---")
-    print(f"{YELLOW}--- Create Server Connection ---{RESET}")
+    logger.info("--- Create Server Connection ---")
     cody_server: CodyServer = await CodyServer.init(
-        binary_path=BINARY_PATH, version="0.0.5b", is_debugging=False
+        binary_path=BINARY_PATH,
+        version="0.0.5b",
     )
 
     # Create an AgentSpecs instance with the specified workspace root URI
@@ -41,40 +45,28 @@ async def main():
     )
 
     # Initialize the CodyAgent with the specified agent_specs and debug_method_map.
-    log_message("main:", "--- Initialize Agent ---")
-    print(f"{YELLOW}--- Initialize Agent ---{RESET}")
+    logger.info("--- Initialize Agent ---")
     cody_agent: CodyAgent = CodyAgent(cody_server=cody_server, agent_specs=agent_specs)
-    await cody_agent.initialize_agent(is_debugging=False)
+    await cody_agent.initialize_agent()
 
     # Retrieve and print the available chat models
-    log_message("main:", "--- Retrieve Chat Models ---")
-    print(f"{YELLOW}--- Retrieve Chat Models ---{RESET}")
-    models = await cody_agent.get_models(model_type="chat", is_debugging=False)
-    print(models)
+    logger.info("--- Retrieve Chat Models ---")
+    models = await cody_agent.get_models(model_type="chat")
+    logger.info("Available models: %s", models)
     # Create a new chat with the CodyAgent
-    log_message("main:", "--- Create new chat ---")
-    print(f"{YELLOW}--- Create new chat ---{RESET}")
-    await cody_agent.new_chat(is_debugging=False)
+    logger.info("--- Create new chat ---")
+    await cody_agent.new_chat()
 
     # Set the chat model to Claude3Haiku
-    log_message("main:", "--- Set Model ---")
-    print(f"{YELLOW}--- Set Model ---{RESET}")
-    await cody_agent.set_model(
-        model=Models.Claude3Sonnet,
-        is_debugging=False,
-    )
+    logger.info("--- Set Model ---")
+    await cody_agent.set_model(model=Models.Claude3Sonnet)
 
     # Set the repository context
-    log_message("main:", "--- Set context repo ---")
-    print(f"{YELLOW}--- Set context repo ---{RESET}")
-    await cody_agent.set_context_repo(
-        repos=["github.com/PriNova/codypy"],
-        is_debugging=False,
-    )
+    logger.info("--- Set context repo ---")
+    await cody_agent.set_context_repo(repos=["github.com/PriNova/codypy"])
 
     # Send a message to the chat and print the response until the user enters '/quit'.
-    log_message("main:", "--- Send message (short) ---")
-    print(f"{YELLOW}--- Send message (short) ---{RESET}")
+    logger.info("--- Send message (short) ---")
 
     # set specified context files to be used by Cody of your choice in the workspace
     context_file = append_paths(
@@ -93,19 +85,16 @@ async def main():
             show_context_files=True,
             # Set to the list of files you want to have context for. See the example above
             context_files=context_file,
-            is_debugging=False,
         )
         if response == "":
             break
         print(f"{BLUE}Assistant{RESET}: {response}\n")
-        print("--- Context Files ---")
+        logger.info("--- Context Files ---")
         if context_files_response:
             for context in context_files_response:
-                print(f"{YELLOW}{context}{RESET}")
+                logger.info("file: %s", context)
         else:
-            print(f"{YELLOW}None{RESET}")
-
-    # debug_method_map["webview/postMessage"] = True
+            logger.info("No context file")
 
     # Cleanup the server and return None
     await cody_server.cleanup_server()

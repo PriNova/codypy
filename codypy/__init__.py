@@ -1,3 +1,4 @@
+from .agent import CodyAgent
 from .client_info import (
     AgentSpecs,
     ClientCapabilities,
@@ -16,12 +17,10 @@ from .config import (
     WHITE,
     YELLOW,
     Configs,
-    debug_method_map,
     get_configs,
-    get_debug_map,
 )
 from .context import append_paths
-from .logger import log_message, setup_logger
+from .server import CodyServer
 from .server_info import AuthStatus, CodyAgentInfo, CodyLLMSiteConfiguration
 
 __all__ = [
@@ -29,8 +28,6 @@ __all__ = [
     "CodyServer",
     "Configs",
     "get_configs",
-    "get_debug_map",
-    "debug_method_map",
     "ClientCapabilities",
     "AgentSpecs",
     "Models",
@@ -49,6 +46,4 @@ __all__ = [
     "CYAN",
     "WHITE",
     "append_paths",
-    "setup_logger",
-    "log_message",
 ]

@@ -1,12 +1,13 @@
-import sys
+import logging
 from typing import Any
 
 from codypy.client_info import AgentSpecs, Models
-from codypy.config import RED, RESET, debug_method_map
-from codypy.logger import log_message
+from codypy.exceptions import AgentAuthenticationError
 from codypy.messaging import _show_last_message, request_response
 from codypy.server import CodyServer
 from codypy.server_info import CodyAgentInfo
+
+logger = logging.getLogger(__name__)
 
 
 class CodyAgent:
@@ -14,19 +15,14 @@ class CodyAgent:
         self,
         cody_server: CodyServer,
         agent_specs: AgentSpecs,
-        debug_method_map=debug_method_map,
     ) -> None:
         self._cody_server = cody_server
         self.chat_id: str | None = None
         self.repos: dict = {}
         self.current_repo_context: list[str] = []
         self.agent_specs = agent_specs
-        self.debug_method_map = debug_method_map
 
-    async def initialize_agent(
-        self,
-        is_debugging: bool = False,
-    ) -> None:
+    async def initialize_agent(self) -> None:
         """
         Initializes the Cody agent by sending an "initialize" request to the agent and handling the response.
         The method takes in agent specifications, a debug method map, and a boolean flag indicating whether debugging is enabled.
@@ -39,61 +35,40 @@ class CodyAgent:
         """
 
         async def _handle_response(response: Any) -> None:
-            cody_agent_specs: CodyAgentInfo = CodyAgentInfo.model_validate(response)
-            log_message(
-                "CodyServer: initialize_agent:",
-                f"Agent Info: {cody_agent_specs}",
-            )
-            if is_debugging:
-                print(f"Agent Info: {cody_agent_specs}\n")
-            if not cody_agent_specs.authenticated:
-                log_message(
-                    "CodyServer: initialize_agent:",
-                    "Server is not authenticated.",
-                )
-                print(f"{RED}--- Server is not authenticated ---{RESET}")
-                await self.cleanup_server()
-                sys.exit(1)
+            # TODO: Consider attaching CodyAgentInfo to CodyAgent
+            cody_agent_info: CodyAgentInfo = CodyAgentInfo.model_validate(response)
+            # TODO: Prevent printing access token. Pydantic.SecretStr did not work
+            logger.debug("CodyAgent initialized with specs: %s", self.agent_specs)
+            logger.debug("CodyAgent Info: %s", cody_agent_info)
+            if not cody_agent_info.authenticated:
+                # TODO: Consider leaving the server process alive
+                await self._cody_server.cleanup_server()
+                raise AgentAuthenticationError("CodyAgent is not authenticated")
+            logger.info("CodyAgent initialized successfully")
 
         response = await request_response(
             "initialize",
             self.agent_specs.model_dump(),
-            debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
-            is_debugging,
         )
 
         await _handle_response(response)
 
-    async def new_chat(
-        self, debug_method_map=debug_method_map, is_debugging: bool = False
-    ):
-        """
-        Initiates a new chat session with the Cody agent server.
-
-        Args:
-            debug_method_map (dict, optional): A mapping of debug methods to be used during the chat session.
-            is_debugging (bool, optional): A flag indicating whether debugging is enabled. Defaults to False.
-        """
+    async def new_chat(self):
+        """Initiates a new chat session with the Cody agent server."""
 
         response = await request_response(
             "chat/new",
             None,
-            debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
-            is_debugging,
         )
 
+        logger.info("New chat session %s created", response)
         self.chat_id = response
 
-    async def _lookup_repo_ids(
-        self,
-        repos: list[str],
-        debug_method_map=debug_method_map,
-        is_debugging: bool = False,
-    ) -> list[dict]:
+    async def _lookup_repo_ids(self, repos: list[str]) -> list[dict]:
         """Lookup repository objects via their names
 
         Results are cached in self.repos dictionary to avoid extra lookups
@@ -102,10 +77,6 @@ class CodyAgent:
         Args:
             context_repos (list of strings): Name of the repositories which should
                                              be used for the chat context.
-            debug_method_map (dict, optional): A mapping of debug methods to be
-                                               used during the chat session.
-            is_debugging (bool, optional): A flag indicating whether debugging is
-                                           enabled. Defaults to False.
         """
 
         if repos_to_lookup := [x for x in repos if x not in self.repos]:
@@ -114,10 +85,8 @@ class CodyAgent:
             response = await request_response(
                 "graphql/getRepoIds",
                 {"names": repos_to_lookup, "first": len(repos_to_lookup)},
-                debug_method_map,
                 self._cody_server._reader,
                 self._cody_server._writer,
-                is_debugging,
             )
 
             for repo in response["repos"]:
@@ -130,21 +99,12 @@ class CodyAgent:
 
         return [self.repos[x] for x in repos if self.repos[x]]
 
-    async def set_context_repo(
-        self,
-        repos: list[str],
-        debug_method_map=debug_method_map,
-        is_debugging: bool = False,
-    ) -> None:
+    async def set_context_repo(self, repos: list[str]) -> None:
         """Set repositories to use as context
 
         Args:
             context_repos (list of strings): Name of the repositories which should
                                              be used for the chat context.
-            debug_method_map (dict, optional): A mapping of debug methods to be
-                                               used during the chat session.
-            is_debugging (bool, optional): A flag indicating whether debugging is
-                                           enabled. Defaults to False.
         """
 
         if self.current_repo_context == repos:
@@ -152,11 +112,7 @@ class CodyAgent:
 
         self.current_repo_context = repos
 
-        repo_objects = await self._lookup_repo_ids(
-            repos=repos,
-            debug_method_map=debug_method_map,
-            is_debugging=is_debugging,
-        )
+        repo_objects = await self._lookup_repo_ids(repos=repos)
 
         # Configure the selected repositories for the chat context
         command = {
@@ -169,25 +125,16 @@ class CodyAgent:
         await request_response(
             "webview/receiveMessage",
             command,
-            debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
-            is_debugging,
         )
 
-    async def get_models(
-        self,
-        model_type: str,
-        debug_method_map=debug_method_map,
-        is_debugging: bool = False,
-    ) -> Any:
+    async def get_models(self, model_type: str) -> Any:
         """
         Retrieves the available models for the specified model type (either "chat" or "edit") from the Cody agent server.
 
         Args:
             model_type (Literal["chat", "edit"]): The type of model to retrieve.
-            debug_method_map (dict, optional): A mapping of debug methods to be used during the request. Defaults to `debug_method_map`.
-            is_debugging (bool, optional): A flag indicating whether debugging is enabled. Defaults to False.
 
         Returns:
             Any: The result of the "chat/models" request.
@@ -197,25 +144,16 @@ class CodyAgent:
         return await request_response(
             "chat/models",
             model,
-            debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
-            is_debugging,
         )
 
-    async def set_model(
-        self,
-        model: Models = Models.Claude3Sonnet,
-        debug_method_map=debug_method_map,
-        is_debugging: bool = False,
-    ) -> Any:
+    async def set_model(self, model: Models = Models.Claude3Sonnet) -> Any:
         """
         Sets the model to be used for the chat session.
 
         Args:
             model (Models): The model to be used for the chat session. Defaults to Models.Claude3Sonnet.
-            debug_method_map (dict, optional): A mapping of debug methods to be used during the request.
-            is_debugging (bool, optional): A flag indicating whether debugging is enabled. Defaults to False.
 
         Returns:
             Any: The result of the "webview/receiveMessage" request.
@@ -229,10 +167,8 @@ class CodyAgent:
         return await request_response(
             "webview/receiveMessage",
             command,
-            debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
-            is_debugging,
         )
 
     async def chat(
@@ -241,7 +177,6 @@ class CodyAgent:
         enhanced_context: bool = True,
         show_context_files: bool = False,
         context_files=None,
-        is_debugging: bool = False,
     ):
         """
         Sends a chat message to the Cody server and returns the response.
@@ -249,13 +184,10 @@ class CodyAgent:
         Args:
             message (str): The message to be sent to the Cody server.
             enhanced_context (bool, optional): Whether to include enhanced context in the chat message request. Defaults to True.
-            debug_method_map (dict, optional): A mapping of debug methods to be used during the request.
-            is_debugging (bool, optional): A flag indicating whether debugging is enabled. Defaults to False.
 
         Returns:
             str: The response from the Cody server, formatted as a string with the speaker and response.
         """
-        debug_method_map["webview/postMessage"] = False
         if context_files is None:
             context_files = []
         if message == "/quit":
@@ -275,24 +207,15 @@ class CodyAgent:
         result = await request_response(
             "chat/submitMessage",
             chat_message_request,
-            debug_method_map,
             self._cody_server._reader,
             self._cody_server._writer,
-            is_debugging,
         )
 
         (speaker, response, context_files_response) = await _show_last_message(
-            result, show_context_files, is_debugging
+            result,
+            show_context_files,
         )
         if speaker == "" or response == "":
-            log_message(
-                "CodyAgent: chat:",
-                f"Failed to submit chat message: {result}",
-            )
-            debug_method_map["webview/postMessage"] = True
-            return f"{RED}--- Failed to submit chat message ---{RESET}"
-        debug_method_map["webview/postMessage"] = True
-        return (
-            response,
-            context_files_response,
-        )
+            logger.error("Failed to submit chat message: %s", result)
+            return None
+        return (response, context_files_response)

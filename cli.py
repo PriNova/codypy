@@ -4,7 +4,6 @@ import os
 
 from codypy.client_info import AgentSpecs
 from codypy.cody_py import CodyAgent, CodyServer
-from codypy.config import debug_method_map
 
 
 async def async_main():
@@ -60,7 +59,8 @@ async def async_main():
 
 async def chat(args):
     cody_server: CodyServer = await CodyServer.init(
-        binary_path=args.binary_path, version="0.0.5b", is_debugging=False
+        binary_path=args.binary_path,
+        version="0.0.5b",
     )
     # Create an AgentSpecs instance with the specified workspace root URI and extension configuration.
     agent_specs = AgentSpecs(
@@ -71,24 +71,18 @@ async def chat(args):
             "customConfiguration": {},
         },
     )
-    cody_agent: CodyAgent = await cody_server.initialize_agent(
-        agent_specs=agent_specs, is_debugging=False
-    )
+    cody_agent: CodyAgent = await cody_server.initialize_agent(agent_specs=agent_specs)
 
-    await cody_agent.new_chat(is_debugging=False)
+    await cody_agent.new_chat()
 
-    debug_method_map["webview/postMessage"] = False
     response = await cody_agent.chat(
         message=args.message,
         enhanced_context=args.ec,
         show_context_files=args.sc,
-        is_debugging=False,
     )
     if response == "":
         return
     print(response)
-
-    debug_method_map["webview/postMessage"] = True
 
     await cody_server.cleanup_server()
     return None
