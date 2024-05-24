@@ -17,12 +17,26 @@ logger = logging.getLogger(__name__)
 
 
 class RPCDriver:
-    """Class to handle all RPC communications"""
+    """Class to handle all RPC communications
 
-    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    :param reader: asyncio.StreamReader, a socket object to stdio or tcp
+                   reader socket
+    :param writer: asyncio.StreamWriter, a socket object to stdio or tcp
+                   writer socket
+    :param read_timeout: Float, the timeout value used to read from the
+                         socket. Defaults to 10.0 the same as Cody Agent
+    """
+
+    def __init__(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        read_timeout: float = 10.0,
+    ):
         self.message_id: int = 1
         self.reader: asyncio.StreamReader = reader
         self.writer: asyncio.StreamWriter = writer
+        self.read_timeout: float = read_timeout
 
     async def send_jsonrpc_request(
         self, method: str, params: Dict[str, Any] | None
@@ -64,14 +78,14 @@ class RPCDriver:
             asyncio.TimeoutError: If the message cannot be read within the 5 second timeout.
         """
         headers: bytes = await asyncio.wait_for(
-            self.reader.readuntil(b"\r\n\r\n"), timeout=5.0
+            self.reader.readuntil(b"\r\n\r\n"), timeout=self.read_timeout
         )
         content_length: int = int(
             headers.decode("utf-8").split("Content-Length:")[1].strip()
         )
 
         json_data: bytes = await asyncio.wait_for(
-            self.reader.readexactly(content_length), timeout=5.0
+            self.reader.readexactly(content_length), timeout=self.read_timeout
         )
         return json_data.decode("utf-8")
 
@@ -93,7 +107,8 @@ class RPCDriver:
                 response: str = await self._receive_jsonrpc_messages()
                 yield pd.from_json(response)
         except asyncio.TimeoutError:
-            yield pd.from_json("{}")
+            logger.error("Reached timeout (%s sec) without complete read")
+            yield {}
 
     async def request_response(
         self,
@@ -112,9 +127,14 @@ class RPCDriver:
         """
         logger.debug("Sending command: %s - %s", method_name, params)
         await self.send_jsonrpc_request(method_name, params)
+        response: dict | None = None
         async for response in self.handle_server_respones():
             logger.debug("Response: %s", response)
             if response and "result" in response:
                 logger.debug("Messaging: request_response: %s", response)
                 return response["result"]
+        logger.error(
+            "Failed to find a complete message with 'result' key. Last message: %s",
+            response,
+        )
         return None
