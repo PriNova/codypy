@@ -22,7 +22,7 @@ from .config import (
 )
 from .context import append_paths
 from .logger import log_message, setup_logger
-from .server_info import AuthStatus, CodyAgentSpecs, CodyLLMSiteConfiguration
+from .server_info import AuthStatus, CodyAgentInfo, CodyLLMSiteConfiguration
 
 __all__ = [
     "CodyAgent",
@@ -35,7 +35,7 @@ __all__ = [
     "AgentSpecs",
     "Models",
     "ModelSpec",
-    "CodyAgentSpecs",
+    "CodyAgentInfo",
     "AuthStatus",
     "CodyLLMSiteConfiguration",
     "ExtensionConfiguration",

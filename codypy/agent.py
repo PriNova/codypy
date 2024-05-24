@@ -1,13 +1,12 @@
-import asyncio
 import sys
-from typing import Any, Self
+from typing import Any
 
 from codypy.client_info import AgentSpecs, Models
 from codypy.config import RED, RESET, debug_method_map
 from codypy.logger import log_message
 from codypy.messaging import _show_last_message, request_response
 from codypy.server import CodyServer
-from codypy.server_info import CodyAgentSpecs
+from codypy.server_info import CodyAgentInfo
 
 
 class CodyAgent:
@@ -40,7 +39,7 @@ class CodyAgent:
         """
 
         async def _handle_response(response: Any) -> None:
-            cody_agent_specs: CodyAgentSpecs = CodyAgentSpecs.model_validate(response)
+            cody_agent_specs: CodyAgentInfo = CodyAgentInfo.model_validate(response)
             log_message(
                 "CodyServer: initialize_agent:",
                 f"Agent Info: {cody_agent_specs}",
