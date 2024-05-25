@@ -9,6 +9,7 @@ and map to the process' stdio or TCP sockets.
 
 import asyncio
 import logging
+import os
 from asyncio.subprocess import Process
 
 logger = logging.getLogger(__name__)
@@ -27,16 +28,17 @@ class CodyProcessManager:
 
     async def create_process(self) -> None:
         """Asynchronously creates a connection to the Cody server"""
+        env_vars = os.environ.copy()
         debug = logger.getEffectiveLevel() == logging.DEBUG
+        env_vars["CODY_DEBUG"] = str(debug).lower()
+        env_vars["CODY_AGENT_DEBUG_REMOTE"] = str(self.use_tcp).lower()
+
         self.process = await asyncio.create_subprocess_exec(
             self.binary_path,
             *self.binary_args,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
-            env={
-                "CODY_AGENT_DEBUG_REMOTE": str(self.use_tcp).lower(),
-                "CODY_DEBUG": str(debug).lower(),
-            },
+            env=env_vars,
         )
         self.reader = self.process.stdout
         self.writer = self.process.stdin
