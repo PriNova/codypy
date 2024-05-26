@@ -383,7 +383,19 @@ ContextItem = Union[
 ]
 
 
-class Message(BaseModel):
+class PlainMessage(BaseModel):
+    """Chat Message model
+
+    :param text: String, contains the answer or the question
+    :param speaker: String, could be either "human" or "assistant".
+                    Signals which end sent the text.
+    """
+
+    text: str
+    speaker: Literal["human", "assistant"]
+
+
+class Message(PlainMessage):
     """Chat Message model
 
     :param text: String, contains the answer or the question
@@ -394,8 +406,6 @@ class Message(BaseModel):
                          will be listed in here.
     """
 
-    text: str
-    speaker: Literal["human", "assistant"]
     contextFiles: list[ContextItem] | None = None
 
 

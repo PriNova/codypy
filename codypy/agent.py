@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from typing import Any, Self
 
 from .chat import Chat
-from .models import AgentSpecs, Message
+from .models import AgentSpecs, Message, PlainMessage
 from .server import CodyServer
 
 logger = logging.getLogger(__name__)
@@ -132,10 +132,32 @@ class CodyAgent:
         self.chats.append(chat)
         return chat
 
-    async def restore_chat(self, messages: list[Message]) -> Chat:
-        """Restore a conversation from an existing message stack"""
+    async def restore_chat(
+        self, messages: list[dict[str, str] | Message | PlainMessage]
+    ) -> Chat:
+        """Restore a conversation from an existing message stack
+
+        :param messages: List of Dicts, Message or PlainMessage objects
+            To restore a chat session to Cody we need to construct a list
+            of dictionaries which contains two keys: "text" and "speaker".
+            This is almost the same as the Message object without the
+            contextFile field.
+        """
         panel_id = datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S GMT")
-        params = {"messages": [x.model_dump() for x in messages], "chatID": panel_id}
+        clean_messages = []
+        for msg in messages:
+            if isinstance(msg, dict):
+                plain_msg = PlainMessage(**msg)
+            elif isinstance(msg, Message):
+                plain_msg = PlainMessage(**msg.model_dump())
+            elif isinstance(msg, PlainMessage):
+                plain_msg = msg
+            else:
+                raise ValueError(
+                    "`messages` parameter should be a list of dicts or Message objects"
+                )
+            clean_messages.append(plain_msg.model_dump())
+        params = {"messages": clean_messages, "chatID": panel_id}
         new_chat_id = await self.rpc("chat/restore", params)
         chat = Chat(chat_id=new_chat_id, agent=self)
         self.chats.append(chat)
