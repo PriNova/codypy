@@ -59,12 +59,17 @@ class RPCDriver:
         }
 
         # Convert the message to JSON string
-        json_message: str = pd.to_json(message).decode()
+        # pd.to_json returns bytes. since we read/write bytes we need to
+        # determine the length of the content as bytes because it differs
+        # from the unicode length.
+        json_message: bytes = pd.to_json(message)
         content_length: int = len(json_message)
-        content_message: str = f"Content-Length: {content_length}\r\n\r\n{json_message}"
+        content_message: bytes = (
+            f"Content-Length: {content_length}\r\n\r\n".encode() + json_message
+        )
 
         # Send the JSON-RPC message to the server
-        self.writer.write(content_message.encode("utf-8"))
+        self.writer.write(content_message)
         await self.writer.drain()
         self.message_id += 1
 
