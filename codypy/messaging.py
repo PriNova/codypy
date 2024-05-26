@@ -34,12 +34,14 @@ async def _send_jsonrpc_request(
     }
 
     # Convert the message to JSON string
-    json_message: str = pd.to_json(message).decode()
+    json_message: bytes = pd.to_json(message)
     content_length: int = len(json_message)
-    content_message: str = f"Content-Length: {content_length}\r\n\r\n{json_message}"
+    content_message: bytes = (
+        f"Content-Length: {content_length}\r\n\r\n".encode() + json_message
+    )
 
     # Send the JSON-RPC message to the server
-    writer.write(content_message.encode("utf-8"))
+    writer.write(content_message)
     await writer.drain()
     MESSAGE_ID += 1
 
