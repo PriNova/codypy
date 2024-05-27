@@ -190,7 +190,7 @@ class CodyAgent:
         """
         if context_files is None:
             context_files = []
-        if message == "/quit":
+        if message in ["/quit", "/bye", "/exit"]:
             return "", []
 
         chat_message_request = {

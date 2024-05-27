@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from codypy.agent import CodyAgent
 from codypy.client_info import AgentSpecs, Models
-from codypy.config import BLUE, GREEN, RESET, YELLOW
+from codypy.config import BLUE, GREEN, RESET
 from codypy.context import append_paths
 from codypy.server import CodyServer
 
