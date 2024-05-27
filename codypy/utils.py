@@ -2,7 +2,8 @@ import os
 import platform
 from typing import Any
 
-import requests
+import aiofiles
+import aiohttp
 
 from codypy.config import Configs
 from codypy.messaging import request_response
@@ -85,8 +86,7 @@ async def _check_for_binary_file(
         bool: True if the Cody agent binary file exists, False otherwise.
     """
     cody_agent = await _format_binary_name(cody_name, version)
-    has_bin = await _has_file(binary_path, cody_agent)
-    return has_bin
+    return await _has_file(binary_path, cody_agent)
 
 
 async def _format_binary_name(cody_name: str, version: str) -> str:
@@ -124,24 +124,26 @@ async def _download_binary_to_path(
     cody_agent = await _format_binary_name(cody_name, version)
     cody_binaray_path = os.path.join(binary_path, cody_agent)
 
-    r = requests.get(
-        f"https://github.com/sourcegraph/cody/releases/download/agent-v{version}/{cody_agent}"
-    )
-    try:
-        r.raise_for_status()
-        with open(cody_binaray_path, "wb") as f:
-            f.write(r.content)
-            print(f"Downloaded {cody_agent} to {binary_path}")
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            f"https://github.com/sourcegraph/cody/releases/download/agent-v{version}/{cody_agent}"
+        ) as response:
+            if response.status != 200:
+                print(f"HTTP error occurred: {response.status}")
+                return False
 
-            # set permission to chmod +x for the downloaded file
-            os.chmod(cody_binaray_path, 0o755)
-            return True
-    except requests.exceptions.HTTPError as err:
-        print(f"HTTP error occurred: {err}")
-        return False
-    except requests.exceptions.ConnectionError as err:
-        print(f"Error connecting to server: {err}")
-        return False
+            try:
+                async with aiofiles.open(cody_binaray_path, "wb") as f:
+                    content = await response.read()
+                    await f.write(content)
+                    print(f"Downloaded {cody_agent} to {binary_path}")
+
+                    # set permission to chmod +x for the downloaded file
+                    os.chmod(cody_binaray_path, 0o755)
+                    return True
+            except Exception as err:
+                print(f"Error occurred while writing the file: {err}")
+                return False
 
 
 async def get_remote_repositories(

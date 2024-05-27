@@ -2,3 +2,5 @@ requests
 python-dotenv
 pydantic
 pydantic_core
+aiohttp
+aiofiles
