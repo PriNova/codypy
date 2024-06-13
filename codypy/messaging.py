@@ -8,6 +8,7 @@ the connected reader/writer sockets.
 """
 
 import asyncio
+import json
 import logging
 from typing import Any, AsyncGenerator, Dict
 
@@ -110,7 +111,12 @@ class RPCDriver:
         try:
             while True:
                 response: str = await self._receive_jsonrpc_messages()
-                yield pd.from_json(response)
+                # Cody backend returns unicode with unicode escape sequence
+                # instead of raw bytes. While processing the response stream
+                # we're also receiving partial unicode, e.g.
+                # \\ud83c + \\udfce + \\ufe0. Using pd.to_json does not work
+                # here but native json.loads does.
+                yield json.loads(response)
         except asyncio.TimeoutError:
             logger.error("Reached timeout (%s sec) without complete read")
             yield {}
