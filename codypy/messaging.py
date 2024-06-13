@@ -38,6 +38,7 @@ class RPCDriver:
         self.reader: asyncio.StreamReader = reader
         self.writer: asyncio.StreamWriter = writer
         self.read_timeout: float = read_timeout
+        self.lock = asyncio.Lock()
 
     async def send_jsonrpc_request(
         self, method: str, params: Dict[str, Any] | None
@@ -137,13 +138,14 @@ class RPCDriver:
             Any: The result of the JSON-RPC request, or None if no result is available.
         """
         logger.debug("Sending command: %s - %s", method_name, params)
-        await self.send_jsonrpc_request(method_name, params)
-        response: dict | None = None
-        async for response in self.handle_server_respones():
-            logger.debug("Response: %s", response)
-            if response and "result" in response:
-                logger.debug("Messaging: request_response: %s", response)
-                return response["result"]
+        async with self.lock:
+            await self.send_jsonrpc_request(method_name, params)
+            response: dict | None = None
+            async for response in self.handle_server_respones():
+                logger.debug("Response: %s", response)
+                if response and "result" in response:
+                    logger.debug("Messaging: request_response: %s", response)
+                    return response["result"]
         logger.error(
             "Failed to find a complete message with 'result' key. Last message: %s",
             response,
