@@ -52,6 +52,8 @@ async def _format_arch(arch: str) -> str:
         return "linux-arm64"
     if arch == "macos_x64":
         return "macos-x64"
+    if arch == "macos_arm64":
+        return "macos-arm64"
     if arch == "win_x64":
         return "win-x64"
 
