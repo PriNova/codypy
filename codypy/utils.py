@@ -106,7 +106,7 @@ async def _format_binary_name(cody_name: str, version: str) -> str:
     arch = await _get_platform_arch()
     formatted_arch = await _format_arch(arch)
     return (
-        f"{cody_name}-{formatted_arch}-{version}{'.exe' if arch == 'win-x64' else ''}"
+        f"{cody_name}-{formatted_arch}-{version}{'.ps1' if arch == 'win-x64' else ''}"
     )
 
 
@@ -161,7 +161,7 @@ async def _download_binary_to_path(
     
     # Create a script that runs `node package/dist/index.js`
     index_js = os.path.join(binary_dir, "package", "dist", "index.js")
-    script_content = f'#!/bin/sh\nnode {index_js} "$@"' if os.name != 'nt' else f'@echo off\nnode {index_js} %*'
+    script_content = f'#!/bin/sh\nnode {index_js} "$@"' if os.name != 'nt' else f'node "{index_js}" $args'
     
     try:
         with open(cody_binary_path, 'w') as f:
