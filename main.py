@@ -30,7 +30,7 @@ async def main():
     logger.info("--- Create Server Connection ---")
     cody_server: CodyServer = await CodyServer.init(
         binary_path=BINARY_PATH,
-        version="0.0.5b",
+        version="5.5.14",
     )
 
     # Create an AgentSpecs instance with the specified workspace root URI
@@ -41,6 +41,7 @@ async def main():
             "accessToken": SRC_ACCESS_TOKEN,
             "codebase": "",  # "/home/prinova/CodeProjects/codypy",  # github.com/sourcegraph/cody",
             "customConfiguration": {},
+            "cody.experimental.symf.enabled": False,
         },
     )
 

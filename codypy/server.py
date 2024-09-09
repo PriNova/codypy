@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _get_cody_binary(binary_path: str, version: str) -> str:
+    print(f"Checking for Cody Agent binary at {binary_path}")
     has_agent_binary = await _check_for_binary_file(binary_path, "cody-agent", version)
     if not has_agent_binary:
         logger.warning(
@@ -89,7 +90,8 @@ class CodyServer:
             )
         else:
             binary = self.cody_binary
-        args.append("jsonrpc")
+        args.append("api")
+        args.append("jsonrpc-stdio")
         self._process: Process = await asyncio.create_subprocess_exec(
             binary,
             *args,

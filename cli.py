@@ -60,7 +60,7 @@ async def async_main():
 async def chat(args):
     cody_server: CodyServer = await CodyServer.init(
         binary_path=args.binary_path,
-        version="0.0.5b",
+        version="5.5.14",
     )
     # Create an AgentSpecs instance with the specified workspace root URI and extension configuration.
     agent_specs = AgentSpecs(

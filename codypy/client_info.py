@@ -46,7 +46,7 @@ class ClientCapabilities(BaseModel):
 
 class AgentSpecs(BaseModel):
     name: str = "cody-agent"
-    version: str = "0.0.5b"
+    version: str = "5.5.14"
     workspaceRootUri: str | None = None
 
     # @deprecated Use `workspaceRootUri` instead.
@@ -62,7 +62,7 @@ class AgentSpecs(BaseModel):
     # marketingTracking: TelemetryEventMarketingTrackingInput = None
 
     def __init__(
-        self, name="cody-agent", version="0.0.5b", workspaceRootUri="", **data
+        self, name="cody-agent", version="5.5.14", workspaceRootUri="", **data
     ):
         super().__init__(
             name=name, version=version, workspaceRootUri=workspaceRootUri, **data
