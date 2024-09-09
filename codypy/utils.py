@@ -1,6 +1,7 @@
 import os
 import platform
 from typing import Any
+import tarfile
 
 import aiofiles
 import aiohttp
@@ -110,7 +111,7 @@ async def _format_binary_name(cody_name: str, version: str) -> str:
 
 
 async def _download_binary_to_path(
-    binary_path: str, cody_name: str, version: str
+    binary_dir: str, cody_name: str, version: str
 ) -> bool:
     """
     Downloads a binary file from a GitHub release to the specified path.
@@ -124,28 +125,57 @@ async def _download_binary_to_path(
         None
     """
     cody_agent = await _format_binary_name(cody_name, version)
-    cody_binaray_path = os.path.join(binary_path, cody_agent)
+    cody_tar_path = os.path.join(binary_dir, f"{cody_agent}.tar.gz")
+    os.makedirs(binary_dir, exist_ok=True)
+    cody_binary_path = os.path.join(binary_dir, cody_agent)
 
     async with aiohttp.ClientSession() as session:
         async with session.get(
-            f"https://github.com/sourcegraph/cody/releases/download/agent-v{version}/{cody_agent}"
+            f"https://registry.npmjs.org/@sourcegraph/cody/-/cody-{version}.tgz"
         ) as response:
             if response.status != 200:
                 print(f"HTTP error occurred: {response.status}")
                 return False
 
             try:
-                async with aiofiles.open(cody_binaray_path, "wb") as f:
+                async with aiofiles.open(cody_tar_path, "wb") as f:
                     content = await response.read()
                     await f.write(content)
-                    print(f"Downloaded {cody_agent} to {binary_path}")
-
-                    # set permission to chmod +x for the downloaded file
-                    os.chmod(cody_binaray_path, 0o755)
-                    return True
+                    print(f"Downloaded {cody_agent} to {binary_dir}")
             except Exception as err:
                 print(f"Error occurred while writing the file: {err}")
                 return False
+
+    try:
+        with tarfile.open(cody_tar_path, "r:gz") as tar:
+            tar.extractall(path=binary_dir)
+        print(f"Extracted {cody_agent} to {binary_dir}")
+        
+        # Remove the downloaded tar file
+        os.remove(cody_tar_path)
+        print(f"Removed temporary file {cody_tar_path}")
+        
+    except Exception as err:
+        print(f"Error occurred while extracting the file: {err}")
+        return False
+    
+    # Create a script that runs `node package/dist/index.js`
+    index_js = os.path.join(binary_dir, "package", "dist", "index.js")
+    script_content = f'#!/bin/sh\nnode {index_js} "$@"' if os.name != 'nt' else f'@echo off\nnode {index_js} %*'
+    
+    try:
+        with open(cody_binary_path, 'w') as f:
+            f.write(script_content)
+        
+        # Make the script executable on Unix-like systems
+        if os.name != 'nt':
+            os.chmod(cody_binary_path, 0o755)
+        
+        print(f"Created executable script at {cody_binary_path}")
+    except Exception as err:
+        print(f"Error occurred while creating the script: {err}")
+        return False
+
 
 
 async def get_remote_repositories(

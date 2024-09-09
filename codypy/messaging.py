@@ -262,7 +262,10 @@ async def request_response(method_name: str, params, reader, writer) -> Any:
     logger.debug("Sending command: %s - %s", method_name, params)
     await _send_jsonrpc_request(writer, method_name, params)
     async for response in _handle_server_respones(reader):
-        if response.get("params", {}).get("isMessageInProgress"):
+        params = response.get("params", {})
+        if not isinstance(params, dict):
+            continue
+        if params.get("isMessageInProgress"):
             stream_logger.debug("InProgress response: %s", response)
         if response and await _has_result(response):
             logger.debug("Response: %s", response)

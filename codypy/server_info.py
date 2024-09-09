@@ -13,13 +13,10 @@ class CodyLLMSiteConfiguration(BaseModel):
 
 class AuthStatus(BaseModel):
     endpoint: str
-    isDotCom: bool
-    isLoggedIn: bool
     showInvalidAccessTokenError: bool
     authenticated: bool
     hasVerifiedEmail: bool
     requiresVerifiedEmail: bool
-    siteHasCodyEnabled: bool
     siteVersion: str
     userCanUpgrade: bool
     username: str
