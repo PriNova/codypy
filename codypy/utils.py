@@ -106,7 +106,7 @@ async def _format_binary_name(cody_name: str, version: str) -> str:
     arch = await _get_platform_arch()
     formatted_arch = await _format_arch(arch)
     return (
-        f"{cody_name}-{formatted_arch}-{version}{'.ps1' if arch == 'win-x64' else ''}"
+        f"{cody_name}-{formatted_arch}-{version}{'.ps1' if os.name == 'nt' else ''}"
     )
 
 
@@ -172,6 +172,7 @@ async def _download_binary_to_path(
             os.chmod(cody_binary_path, 0o755)
         
         print(f"Created executable script at {cody_binary_path}")
+        return True
     except Exception as err:
         print(f"Error occurred while creating the script: {err}")
         return False
